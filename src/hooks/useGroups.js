@@ -17,7 +17,7 @@ export function useGroups(userId) {
       return;
     }
     setLoading(true);
-    const { data: groupRows } = await supabase.from('groups').select('*').order('created_at', { ascending: false });
+    const { data: groupRows } = await supabase.from('ddok_groups').select('*').order('created_at', { ascending: false });
     const groupIds = (groupRows || []).map((g) => g.id);
 
     if (groupIds.length === 0) {
@@ -27,9 +27,9 @@ export function useGroups(userId) {
     }
 
     const [{ data: memberRows }, { data: questionRows }, { data: missionRows }] = await Promise.all([
-      supabase.from('group_members').select('group_id, user_id, profiles(nickname)').in('group_id', groupIds),
-      supabase.from('group_questions').select('*').in('group_id', groupIds).order('created_at', { ascending: true }),
-      supabase.from('group_missions').select('*').in('group_id', groupIds).order('created_at', { ascending: true }),
+      supabase.from('ddok_group_members').select('group_id, user_id, ddok_profiles(nickname)').in('group_id', groupIds),
+      supabase.from('ddok_group_questions').select('*').in('group_id', groupIds).order('created_at', { ascending: true }),
+      supabase.from('ddok_group_missions').select('*').in('group_id', groupIds).order('created_at', { ascending: true }),
     ]);
 
     const questionIds = (questionRows || []).map((q) => q.id);
@@ -37,10 +37,10 @@ export function useGroups(userId) {
 
     const [{ data: answerRows }, { data: doneRowsData }] = await Promise.all([
       questionIds.length
-        ? supabase.from('group_answers').select('*, profiles(nickname)').in('group_question_id', questionIds)
+        ? supabase.from('ddok_group_answers').select('*, ddok_profiles(nickname)').in('group_question_id', questionIds)
         : Promise.resolve({ data: [] }),
       missionIds.length
-        ? supabase.from('group_mission_done').select('*').in('group_mission_id', missionIds)
+        ? supabase.from('ddok_group_mission_done').select('*').in('group_mission_id', missionIds)
         : Promise.resolve({ data: [] }),
     ]);
 
@@ -56,7 +56,7 @@ export function useGroups(userId) {
   useEffect(() => { reload(); }, [reload]);
 
   const createGroup = useCallback(async ({ name, bookTitle, bookAuthor }) => {
-    const { error } = await supabase.from('groups').insert({
+    const { error } = await supabase.from('ddok_groups').insert({
       name: name.trim(), book_title: bookTitle.trim(), book_author: bookAuthor.trim(), owner_id: userId,
     });
     if (error) throw error;
@@ -64,19 +64,19 @@ export function useGroups(userId) {
   }, [userId, reload]);
 
   const joinGroup = useCallback(async (code) => {
-    const { error } = await supabase.rpc('join_group', { code: code.trim() });
+    const { error } = await supabase.rpc('ddok_join_group', { code: code.trim() });
     if (error) throw error;
     await reload();
   }, [reload]);
 
   const addGroupQuestion = useCallback(async (groupId, text) => {
-    const { error } = await supabase.from('group_questions').insert({ group_id: groupId, text: text.trim() });
+    const { error } = await supabase.from('ddok_group_questions').insert({ group_id: groupId, text: text.trim() });
     if (error) throw error;
     await reload();
   }, [reload]);
 
   const upsertAnswer = useCallback(async (groupQuestionId, text) => {
-    const { error } = await supabase.from('group_answers')
+    const { error } = await supabase.from('ddok_group_answers')
       .upsert({ group_question_id: groupQuestionId, user_id: userId, text, updated_at: new Date().toISOString() },
         { onConflict: 'group_question_id,user_id' });
     if (error) throw error;
@@ -84,16 +84,16 @@ export function useGroups(userId) {
   }, [userId, reload]);
 
   const addGroupMission = useCallback(async (groupId, text) => {
-    const { error } = await supabase.from('group_missions').insert({ group_id: groupId, text: text.trim() });
+    const { error } = await supabase.from('ddok_group_missions').insert({ group_id: groupId, text: text.trim() });
     if (error) throw error;
     await reload();
   }, [reload]);
 
   const toggleGroupMissionDone = useCallback(async (missionId, currentlyDone) => {
     if (currentlyDone) {
-      await supabase.from('group_mission_done').delete().eq('group_mission_id', missionId).eq('user_id', userId);
+      await supabase.from('ddok_group_mission_done').delete().eq('group_mission_id', missionId).eq('user_id', userId);
     } else {
-      await supabase.from('group_mission_done').insert({ group_mission_id: missionId, user_id: userId });
+      await supabase.from('ddok_group_mission_done').insert({ group_mission_id: missionId, user_id: userId });
     }
     await reload();
   }, [userId, reload]);

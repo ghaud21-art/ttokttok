@@ -11,7 +11,7 @@ export function useAuth() {
       setProfile(null);
       return;
     }
-    const { data } = await supabase.from('profiles').select('id, nickname').eq('id', userId).maybeSingle();
+    const { data } = await supabase.from('ddok_profiles').select('id, nickname').eq('id', userId).maybeSingle();
     setProfile(data || null);
   }, []);
 
@@ -54,7 +54,7 @@ export function useAuth() {
 
   const updateNickname = useCallback(async (nickname) => {
     if (!session?.user?.id) return;
-    const { error } = await supabase.from('profiles').update({ nickname }).eq('id', session.user.id);
+    const { error } = await supabase.from('ddok_profiles').update({ nickname }).eq('id', session.user.id);
     if (error) throw error;
     await loadProfile(session.user.id);
   }, [session, loadProfile]);

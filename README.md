@@ -14,7 +14,8 @@
 
 1. [supabase.com](https://supabase.com) 에 가입/로그인 → **New Project** 생성 (이름, DB 비밀번호, 리전은 자유롭게 — 한국에서 쓴다면 `Northeast Asia (Seoul)` 추천)
 2. 프로젝트가 만들어지면 왼쪽 메뉴 **SQL Editor** → **New query** 로 들어가서, 이 저장소의 [`supabase/schema.sql`](supabase/schema.sql) 파일 내용을 전부 복사해서 붙여넣고 **Run** 을 누르세요.
-   - 이 한 번의 실행으로 테이블, 보안 정책(RLS), 회원가입 자동 프로필 생성, 함께읽기 초대코드 함수, 표지 이미지 저장용 `covers` 버킷까지 전부 만들어집니다.
+   - 이 한 번의 실행으로 테이블, 보안 정책(RLS), 회원가입 자동 프로필 생성, 함께읽기 초대코드 함수, 표지 이미지 저장용 `ddok-covers` 버킷까지 전부 만들어집니다.
+   - 이 프로젝트를 다른 앱과 같이 쓰고 있어도 괜찮아요 — 이 앱이 만드는 테이블/함수/버킷 이름은 전부 `ddok_` (버킷은 `ddok-`) 접두사가 붙어 있어서 기존 데이터와 이름이 겹치지 않습니다. 단, `auth.users`(로그인 계정)는 프로젝트 전체가 공유하므로, 다른 앱에 이미 가입된 이메일로도 그대로 로그인해서 이 앱을 쓸 수 있어요.
 3. 왼쪽 메뉴 **Project Settings → API** 에서 아래 두 값을 복사해두세요.
    - `Project URL` → `.env.local`의 `VITE_SUPABASE_URL`
    - `anon public` key → `.env.local`의 `VITE_SUPABASE_ANON_KEY`
@@ -99,6 +100,6 @@ src/
 ## 문제 해결
 
 - **로그인은 되는데 책장이 계속 비어있어요** → Supabase SQL Editor에서 `schema.sql`을 실행했는지, 실행 중 에러가 없었는지 확인하세요.
-- **표지 이미지 업로드가 실패해요** → Supabase 대시보드 **Storage**에 `covers` 버킷이 생성되어 있는지 확인하세요 (schema.sql에 포함되어 있어 보통 자동 생성됩니다).
+- **표지 이미지 업로드가 실패해요** → Supabase 대시보드 **Storage**에 `ddok-covers` 버킷이 생성되어 있는지 확인하세요 (schema.sql에 포함되어 있어 보통 자동 생성됩니다).
 - **AI 질문/미션이 항상 똑같은 예시 문장만 나와요** → `GEMINI_API_KEY`가 `.env.local`(로컬) 또는 Vercel 환경변수(배포)에 제대로 들어가 있는지, 로컬이라면 `vercel dev`로 실행했는지 확인하세요. 키가 없거나 호출이 실패하면 앱이 자동으로 예시 질문/미션으로 대체합니다(빈 화면 방지용 폴백).
 - **회원가입 후 로그인이 안 돼요** → Supabase Authentication 설정에서 이메일 확인(Confirm email)이 켜져 있으면 메일함에서 인증 링크를 눌러야 합니다.
