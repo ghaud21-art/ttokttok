@@ -405,12 +405,45 @@ create policy "ddok members can remove their own mission completion"
   using (user_id = auth.uid());
 
 -- ----------------------------------------------------------------------------
--- 개인 기록/질문/미션을 특정 함께읽기 모임에 공유하기
--- (ddok_groups, ddok_is_group_member 정의 이후에 와야 하므로 파일 뒷부분에 위치)
+-- 개인 기록/질문/미션/독서현황을 함께읽기 모임에 공유하기 (여러 모임 동시 공유 가능)
+-- item_type + item_id로 대상을 가리키는 범용 테이블 하나로 record/question/mission/book
+-- 네 가지를 모두 처리한다. (ddok_groups, ddok_is_group_member 정의 이후에 와야 하므로
+-- 파일 뒷부분에 위치)
 -- ----------------------------------------------------------------------------
-alter table public.ddok_records add column if not exists shared_group_id uuid references public.ddok_groups(id) on delete set null;
-alter table public.ddok_questions add column if not exists shared_group_id uuid references public.ddok_groups(id) on delete set null;
-alter table public.ddok_missions add column if not exists shared_group_id uuid references public.ddok_groups(id) on delete set null;
+create table if not exists public.ddok_shares (
+  id uuid primary key default gen_random_uuid(),
+  item_type text not null check (item_type in ('record', 'question', 'mission', 'book')),
+  item_id uuid not null,
+  group_id uuid not null references public.ddok_groups(id) on delete cascade,
+  owner_id uuid not null references public.ddok_profiles(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  unique (item_type, item_id, group_id)
+);
+
+alter table public.ddok_shares enable row level security;
+
+create index if not exists ddok_shares_item_idx on public.ddok_shares(item_type, item_id);
+create index if not exists ddok_shares_group_idx on public.ddok_shares(group_id);
+
+create policy "ddok owner can view own shares"
+  on public.ddok_shares for select
+  to authenticated
+  using (owner_id = auth.uid());
+
+create policy "ddok members can view shares for their groups"
+  on public.ddok_shares for select
+  to authenticated
+  using (public.ddok_is_group_member(group_id));
+
+create policy "ddok owner can add shares"
+  on public.ddok_shares for insert
+  to authenticated
+  with check (owner_id = auth.uid() and public.ddok_is_group_member(group_id));
+
+create policy "ddok owner can remove shares"
+  on public.ddok_shares for delete
+  to authenticated
+  using (owner_id = auth.uid());
 
 -- 책 제목을 그대로 복사해두어 다른 멤버가 공유된 항목을 볼 때도 표시할 수 있게 함
 -- (ddok_books는 owner만 조회 가능한 RLS라 다른 멤버가 조인해서 제목을 못 읽기 때문)
@@ -418,35 +451,38 @@ alter table public.ddok_records add column if not exists book_title text not nul
 alter table public.ddok_questions add column if not exists book_title text not null default '';
 alter table public.ddok_missions add column if not exists book_title text not null default '';
 
-create index if not exists ddok_records_shared_group_idx on public.ddok_records(shared_group_id);
-create index if not exists ddok_questions_shared_group_idx on public.ddok_questions(shared_group_id);
-create index if not exists ddok_missions_shared_group_idx on public.ddok_missions(shared_group_id);
-
-create policy "ddok members can view records shared to their group"
+create policy "ddok members can view shared records"
   on public.ddok_records for select
   to authenticated
-  using (shared_group_id is not null and public.ddok_is_group_member(shared_group_id));
+  using (exists (
+    select 1 from public.ddok_shares s
+    where s.item_type = 'record' and s.item_id = ddok_records.id and public.ddok_is_group_member(s.group_id)
+  ));
 
-create policy "ddok members can view questions shared to their group"
+create policy "ddok members can view shared questions"
   on public.ddok_questions for select
   to authenticated
-  using (shared_group_id is not null and public.ddok_is_group_member(shared_group_id));
+  using (exists (
+    select 1 from public.ddok_shares s
+    where s.item_type = 'question' and s.item_id = ddok_questions.id and public.ddok_is_group_member(s.group_id)
+  ));
 
-create policy "ddok members can view missions shared to their group"
+create policy "ddok members can view shared missions"
   on public.ddok_missions for select
   to authenticated
-  using (shared_group_id is not null and public.ddok_is_group_member(shared_group_id));
+  using (exists (
+    select 1 from public.ddok_shares s
+    where s.item_type = 'mission' and s.item_id = ddok_missions.id and public.ddok_is_group_member(s.group_id)
+  ));
 
--- 멤버 독서 현황판: 지금 읽고 있는 책을 그룹에 공유(다른 회원의 ddok_books는 owner만
--- 조회 가능한 RLS라, 여기서도 shared_group_id + 전용 SELECT 정책으로 열어줌)
-alter table public.ddok_books add column if not exists shared_group_id uuid references public.ddok_groups(id) on delete set null;
-
-create index if not exists ddok_books_shared_group_idx on public.ddok_books(shared_group_id);
-
-create policy "ddok members can view books shared to their group"
+-- 멤버 독서 현황판: 지금 읽고 있는 책을 모임에 공유
+create policy "ddok members can view shared books"
   on public.ddok_books for select
   to authenticated
-  using (shared_group_id is not null and public.ddok_is_group_member(shared_group_id));
+  using (exists (
+    select 1 from public.ddok_shares s
+    where s.item_type = 'book' and s.item_id = ddok_books.id and public.ddok_is_group_member(s.group_id)
+  ));
 
 -- ----------------------------------------------------------------------------
 -- ddok_question_answers : 공유된 개인 AI 질문 노트에 다른 멤버가 남기는 답변
@@ -469,8 +505,8 @@ create policy "ddok members can read answers to shared questions"
   to authenticated
   using (
     exists (
-      select 1 from public.ddok_questions q
-      where q.id = question_id and q.shared_group_id is not null and public.ddok_is_group_member(q.shared_group_id)
+      select 1 from public.ddok_shares s
+      where s.item_type = 'question' and s.item_id = question_id and public.ddok_is_group_member(s.group_id)
     )
   );
 
@@ -480,8 +516,8 @@ create policy "ddok members can write their own answer to shared questions"
   with check (
     user_id = auth.uid()
     and exists (
-      select 1 from public.ddok_questions q
-      where q.id = question_id and q.shared_group_id is not null and public.ddok_is_group_member(q.shared_group_id)
+      select 1 from public.ddok_shares s
+      where s.item_type = 'question' and s.item_id = question_id and public.ddok_is_group_member(s.group_id)
     )
   );
 

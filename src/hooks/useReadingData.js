@@ -15,16 +15,27 @@ export function useReadingData(userId) {
       return;
     }
     setLoading(true);
-    const [b, r, q, m] = await Promise.all([
-      supabase.from('ddok_books').select('*, ddok_groups(name)').eq('owner_id', userId).order('created_at', { ascending: false }),
-      supabase.from('ddok_records').select('*, ddok_groups(name)').eq('owner_id', userId).order('created_at', { ascending: false }),
-      supabase.from('ddok_questions').select('*, ddok_groups(name)').eq('owner_id', userId).order('created_at', { ascending: false }),
-      supabase.from('ddok_missions').select('*, ddok_groups(name)').eq('owner_id', userId).order('created_at', { ascending: false }),
+    const [b, r, q, m, sharesRes] = await Promise.all([
+      supabase.from('ddok_books').select('*').eq('owner_id', userId).order('created_at', { ascending: false }),
+      supabase.from('ddok_records').select('*').eq('owner_id', userId).order('created_at', { ascending: false }),
+      supabase.from('ddok_questions').select('*').eq('owner_id', userId).order('created_at', { ascending: false }),
+      supabase.from('ddok_missions').select('*').eq('owner_id', userId).order('created_at', { ascending: false }),
+      supabase.from('ddok_shares').select('item_type, item_id, group_id').eq('owner_id', userId),
     ]);
-    setBooks(b.data || []);
-    setRecords(r.data || []);
-    setQuestions(q.data || []);
-    setMissions(m.data || []);
+
+    const sharesByItem = {};
+    (sharesRes.data || []).forEach((s) => {
+      const key = `${s.item_type}:${s.item_id}`;
+      (sharesByItem[key] ||= []).push(s.group_id);
+    });
+    const attachShares = (rows, type) => (rows || []).map((row) => ({
+      ...row, shared_group_ids: sharesByItem[`${type}:${row.id}`] || [],
+    }));
+
+    setBooks(attachShares(b.data, 'book'));
+    setRecords(attachShares(r.data, 'record'));
+    setQuestions(attachShares(q.data, 'question'));
+    setMissions(attachShares(m.data, 'mission'));
     setLoading(false);
   }, [userId]);
 
@@ -153,29 +164,20 @@ export function useReadingData(userId) {
     await reload();
   }, [reload]);
 
-  const shareRecord = useCallback(async (id, groupId) => {
-    const { error } = await supabase.from('ddok_records').update({ shared_group_id: groupId }).eq('id', id);
-    if (error) throw error;
+  const setShares = useCallback(async (itemType, id, groupIds) => {
+    await supabase.from('ddok_shares').delete().eq('item_type', itemType).eq('item_id', id).eq('owner_id', userId);
+    if (groupIds.length) {
+      const rows = groupIds.map((gid) => ({ item_type: itemType, item_id: id, group_id: gid, owner_id: userId }));
+      const { error } = await supabase.from('ddok_shares').insert(rows);
+      if (error) throw error;
+    }
     await reload();
-  }, [reload]);
+  }, [userId, reload]);
 
-  const shareQuestion = useCallback(async (id, groupId) => {
-    const { error } = await supabase.from('ddok_questions').update({ shared_group_id: groupId }).eq('id', id);
-    if (error) throw error;
-    await reload();
-  }, [reload]);
-
-  const shareMission = useCallback(async (id, groupId) => {
-    const { error } = await supabase.from('ddok_missions').update({ shared_group_id: groupId }).eq('id', id);
-    if (error) throw error;
-    await reload();
-  }, [reload]);
-
-  const shareBook = useCallback(async (id, groupId) => {
-    const { error } = await supabase.from('ddok_books').update({ shared_group_id: groupId }).eq('id', id);
-    if (error) throw error;
-    await reload();
-  }, [reload]);
+  const shareRecord = useCallback((id, groupIds) => setShares('record', id, groupIds), [setShares]);
+  const shareQuestion = useCallback((id, groupIds) => setShares('question', id, groupIds), [setShares]);
+  const shareMission = useCallback((id, groupIds) => setShares('mission', id, groupIds), [setShares]);
+  const shareBook = useCallback((id, groupIds) => setShares('book', id, groupIds), [setShares]);
 
   return {
     books, records, questions, missions, loading, reload,

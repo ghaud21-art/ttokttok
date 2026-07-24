@@ -107,7 +107,7 @@ export default function BookDetailPage({
             <span className={STATUS_TAG_CLASS[book.status]}>{STATUS_LABELS[book.status]}</span>
             <span className="tag tag-neutral">{book.genre}</span>
             {onShareBook && (
-              <ShareControl groups={myGroups} value={book.shared_group_id} onChange={(gid) => onShareBook(book.id, gid)} />
+              <ShareControl groups={myGroups} value={book.shared_group_ids} onChange={(groupIds) => onShareBook(book.id, groupIds)} />
             )}
           </div>
           <div style={{ flex: 1, minWidth: 220, display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -250,7 +250,7 @@ function NotebookItem({ q, groups, onShare, onUpdate, onDelete }) {
               <button type="button" className="link-btn" style={{ fontSize: 12, color: '#b3413a' }} onClick={handleDelete}>삭제</button>
             </>
           )}
-          {onShare && <ShareControl groups={groups} value={q.shared_group_id} onChange={(gid) => onShare(q.id, gid)} />}
+          {onShare && <ShareControl groups={groups} value={q.shared_group_ids} onChange={(groupIds) => onShare(q.id, groupIds)} />}
         </div>
       </div>
     </div>

@@ -35,10 +35,10 @@ export default function TogetherPage({ userId, nickname }) {
         return { ...m, doneCount: doneForMission.length, doneByMe: doneForMission.some((d) => d.user_id === userId), canManage };
       }),
       sharedRecords: sharedRecords
-        .filter((r) => r.shared_group_id === g.id)
+        .filter((r) => (r.shared_group_ids || []).includes(g.id))
         .map((r) => ({ ...r, nickname: r.ddok_profiles?.nickname || '독서가' })),
       sharedQuestions: sharedQuestions
-        .filter((q) => q.shared_group_id === g.id)
+        .filter((q) => (q.shared_group_ids || []).includes(g.id))
         .map((q) => {
           const qAnswers = questionAnswers.filter((a) => a.question_id === q.id);
           const mine = qAnswers.find((a) => a.user_id === userId);
@@ -46,10 +46,10 @@ export default function TogetherPage({ userId, nickname }) {
           return { ...q, nickname: q.ddok_profiles?.nickname || '독서가', myAnswer: mine?.text || '', others, isMine: q.owner_id === userId };
         }),
       sharedMissions: sharedMissions
-        .filter((m) => m.shared_group_id === g.id)
+        .filter((m) => (m.shared_group_ids || []).includes(g.id))
         .map((m) => ({ ...m, nickname: m.ddok_profiles?.nickname || '독서가' })),
       sharedBooks: sharedBooks
-        .filter((b) => b.shared_group_id === g.id)
+        .filter((b) => (b.shared_group_ids || []).includes(g.id))
         .map((b) => ({ ...b, nickname: b.ddok_profiles?.nickname || '독서가' })),
     };
   }), [groups, members, questions, answers, missions, doneRows, sharedRecords, sharedQuestions, sharedMissions, sharedBooks, questionAnswers, userId]);
@@ -135,14 +135,11 @@ function GroupCard({
     <div className="blueprint group-card">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
         <div>
-          <div className="card-kicker">함께 읽는 중</div>
+          <div className="card-kicker">함께읽기 모임</div>
           <h3 style={{ margin: '2px 0 4px' }}>{grp.name}</h3>
-          <div style={{ fontSize: 13, opacity: 0.65, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span>{grp.book_title || '아직 책이 정해지지 않았어요'} {grp.book_author && `· ${grp.book_author}`}</span>
-            {isOwner && (
-              <button type="button" className="link-btn" style={{ fontSize: 12 }} onClick={() => setShowEditGroup(true)}>모임 정보 수정</button>
-            )}
-          </div>
+          {isOwner && (
+            <button type="button" className="link-btn" style={{ fontSize: 12 }} onClick={() => setShowEditGroup(true)}>모임 이름 수정</button>
+          )}
           <div style={{ marginTop: 6 }}>
             초대코드 <span className="invite-code">{grp.invite_code}</span>
           </div>
@@ -304,11 +301,24 @@ function GroupQuestion({ q, onAnswer, onEdit, onDelete }) {
   const [text, setText] = useState(q.myAnswer);
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(q.text);
+  const [answerBusy, setAnswerBusy] = useState(false);
+  const [answerSaved, setAnswerSaved] = useState(false);
 
   const saveEdit = async () => {
     if (!editText.trim()) return;
     await onEdit(editText);
     setEditing(false);
+  };
+
+  const saveAnswer = async () => {
+    if (!text.trim()) return;
+    setAnswerBusy(true);
+    try {
+      await onAnswer(text);
+      setAnswerSaved(true);
+    } finally {
+      setAnswerBusy(false);
+    }
   };
 
   const handleDelete = () => {
@@ -342,10 +352,14 @@ function GroupQuestion({ q, onAnswer, onEdit, onDelete }) {
       ))}
       <textarea
         className="input" placeholder="나의 생각을 남겨보세요" value={text}
-        onChange={(e) => setText(e.target.value)}
-        onBlur={() => { if (text.trim() && text !== q.myAnswer) onAnswer(text); }}
+        onChange={(e) => { setText(e.target.value); setAnswerSaved(false); }}
         style={{ minHeight: 52 }}
       />
+      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <button type="button" className="btn btn-secondary" style={{ fontSize: 13 }} onClick={saveAnswer} disabled={answerBusy || !text.trim()}>
+          {answerBusy ? '저장 중...' : answerSaved ? '저장됨 ✓' : '답변 저장'}
+        </button>
+      </div>
     </div>
   );
 }
@@ -402,6 +416,20 @@ function GroupMissionRow({ m, memberCount, onToggle, onEdit, onDelete }) {
 
 function SharedQuestion({ q, onAnswer }) {
   const [text, setText] = useState(q.myAnswer);
+  const [busy, setBusy] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const save = async () => {
+    if (!text.trim()) return;
+    setBusy(true);
+    try {
+      await onAnswer(text);
+      setSaved(true);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div className="blueprint" style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
       <div style={{ fontSize: 12, opacity: 0.6 }}>{q.nickname} · {q.book_title}</div>
@@ -413,12 +441,18 @@ function SharedQuestion({ q, onAnswer }) {
         </div>
       ))}
       {!q.isMine && (
-        <textarea
-          className="input" placeholder="이 질문에 대한 나의 생각도 남겨보세요" value={text}
-          onChange={(e) => setText(e.target.value)}
-          onBlur={() => { if (text.trim() && text !== q.myAnswer) onAnswer(text); }}
-          style={{ minHeight: 48 }}
-        />
+        <>
+          <textarea
+            className="input" placeholder="이 질문에 대한 나의 생각도 남겨보세요" value={text}
+            onChange={(e) => { setText(e.target.value); setSaved(false); }}
+            style={{ minHeight: 48 }}
+          />
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <button type="button" className="btn btn-secondary" style={{ fontSize: 13 }} onClick={save} disabled={busy || !text.trim()}>
+              {busy ? '저장 중...' : saved ? '저장됨 ✓' : '답변 저장'}
+            </button>
+          </div>
+        </>
       )}
     </div>
   );
@@ -426,15 +460,13 @@ function SharedQuestion({ q, onAnswer }) {
 
 function CreateGroupDialog({ onClose, onSubmit }) {
   const [name, setName] = useState('');
-  const [bookTitle, setBookTitle] = useState('');
-  const [bookAuthor, setBookAuthor] = useState('');
   const [busy, setBusy] = useState(false);
 
   const submit = async (e) => {
     e.preventDefault();
     if (!name.trim()) return;
     setBusy(true);
-    try { await onSubmit({ name, bookTitle, bookAuthor }); } finally { setBusy(false); }
+    try { await onSubmit({ name }); } finally { setBusy(false); }
   };
 
   return (
@@ -442,8 +474,6 @@ function CreateGroupDialog({ onClose, onSubmit }) {
       <form className="dialog" onSubmit={submit} onClick={(e) => e.stopPropagation()}>
         <div className="dialog-title">함께읽기 모임 만들기</div>
         <div className="field"><label>모임 이름</label><input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="예: 인문학 모임" /></div>
-        <div className="field"><label>같이 읽을 책 제목</label><input className="input" value={bookTitle} onChange={(e) => setBookTitle(e.target.value)} /></div>
-        <div className="field"><label>저자</label><input className="input" value={bookAuthor} onChange={(e) => setBookAuthor(e.target.value)} /></div>
         <div className="dialog-actions">
           <button type="button" className="btn btn-secondary" onClick={onClose}>취소</button>
           <button type="submit" className="btn btn-primary" disabled={busy}>{busy ? '생성 중...' : '만들기'}</button>
@@ -455,8 +485,6 @@ function CreateGroupDialog({ onClose, onSubmit }) {
 
 function EditGroupDialog({ grp, onClose, onSubmit }) {
   const [name, setName] = useState(grp.name || '');
-  const [bookTitle, setBookTitle] = useState(grp.book_title || '');
-  const [bookAuthor, setBookAuthor] = useState(grp.book_author || '');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -465,16 +493,14 @@ function EditGroupDialog({ grp, onClose, onSubmit }) {
     if (!name.trim()) { setError('모임 이름을 입력해주세요.'); return; }
     setBusy(true);
     setError('');
-    try { await onSubmit({ name, bookTitle, bookAuthor }); } finally { setBusy(false); }
+    try { await onSubmit({ name }); } finally { setBusy(false); }
   };
 
   return (
     <div className="dialog-backdrop" onClick={onClose}>
       <form className="dialog" onSubmit={submit} onClick={(e) => e.stopPropagation()}>
-        <div className="dialog-title">모임 정보 수정</div>
+        <div className="dialog-title">모임 이름 수정</div>
         <div className="field"><label>모임 이름</label><input className="input" value={name} onChange={(e) => setName(e.target.value)} /></div>
-        <div className="field"><label>책 제목</label><input className="input" value={bookTitle} onChange={(e) => setBookTitle(e.target.value)} /></div>
-        <div className="field"><label>저자</label><input className="input" value={bookAuthor} onChange={(e) => setBookAuthor(e.target.value)} /></div>
         {error && <div className="error-text">{error}</div>}
         <div className="dialog-actions">
           <button type="button" className="btn btn-secondary" onClick={onClose}>취소</button>

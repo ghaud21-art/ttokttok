@@ -14,7 +14,7 @@ export default function MissionList({ missions, onToggle, groups, onShare }) {
           <span className={`mission-text${m.done ? ' done' : ''}`}>{m.text}</span>
           <span className="mission-meta">{m.completed_at ? fmtDate(m.completed_at) : ''}</span>
           {onShare && (
-            <ShareControl groups={groups} value={m.shared_group_id} onChange={(gid) => onShare(m.id, gid)} />
+            <ShareControl groups={groups} value={m.shared_group_ids} onChange={(groupIds) => onShare(m.id, groupIds)} />
           )}
         </label>
       ))}

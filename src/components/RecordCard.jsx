@@ -31,7 +31,7 @@ export default function RecordCard({ record, onDelete, onTagClick, showBookLink,
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
           <div className="timestamp">{fmtDate(record.created_at)}</div>
           {onShare && (
-            <ShareControl groups={groups} value={record.shared_group_id} onChange={(gid) => onShare(record.id, gid)} />
+            <ShareControl groups={groups} value={record.shared_group_ids} onChange={(groupIds) => onShare(record.id, groupIds)} />
           )}
         </div>
       )}
