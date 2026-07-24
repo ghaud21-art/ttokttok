@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import BookCard from '../components/BookCard.jsx';
 import GenreBar from '../components/GenreBar.jsx';
-import BadgeRow from '../components/BadgeRow.jsx';
 
 const STATUS_FILTERS = [
   { key: 'all', label: '전체' },
@@ -10,7 +9,7 @@ const STATUS_FILTERS = [
   { key: 'want', label: '읽고 싶음' },
 ];
 
-export default function ShelfPage({ books, records, onOpenBook }) {
+export default function ShelfPage({ books, onOpenBook }) {
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterGenre, setFilterGenre] = useState(null);
 
@@ -43,8 +42,6 @@ export default function ShelfPage({ books, records, onOpenBook }) {
         </div>
         <GenreBar books={books} />
       </div>
-
-      <BadgeRow records={records} />
 
       <div className="filter-row">
         <div className="seg">

@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import RecordCard from '../components/RecordCard.jsx';
 
-export default function TagsPage({ records, books, onOpenBook, activeTag, onSelectTag }) {
+export default function TagsPage({ records, books, onOpenBook, activeTag, onSelectTag, noHeading }) {
   const titleById = useMemo(() => {
     const map = {};
     books.forEach((b) => { map[b.id] = b.title; });
@@ -24,7 +24,7 @@ export default function TagsPage({ records, books, onOpenBook, activeTag, onSele
 
   return (
     <div>
-      <h2 style={{ marginBottom: 18 }}>기록 모아보기</h2>
+      {!noHeading && <h2 style={{ marginBottom: 18 }}>기록 모아보기</h2>}
       {tagCounts.length > 0 ? (
         <div className="tag-cloud">
           {tagCounts.map(([name, count]) => (

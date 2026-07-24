@@ -5,7 +5,7 @@ import { isSupabaseConfigured } from './supabaseClient.js';
 import LoginPage from './pages/LoginPage.jsx';
 import ShelfPage from './pages/ShelfPage.jsx';
 import BookDetailPage from './pages/BookDetailPage.jsx';
-import TagsPage from './pages/TagsPage.jsx';
+import RecordsPage from './pages/RecordsPage.jsx';
 import MissionsArchivePage from './pages/MissionsArchivePage.jsx';
 import TogetherPage from './pages/TogetherPage.jsx';
 import NavBar from './components/NavBar.jsx';
@@ -73,7 +73,7 @@ function AppShell({ user, profile, onLogout }) {
       />
       <div className="container">
         {screen === 'shelf' && (
-          <ShelfPage books={books} records={records} onOpenBook={openBook} />
+          <ShelfPage books={books} onOpenBook={openBook} />
         )}
 
         {screen === 'detail' && activeBook && (
@@ -105,7 +105,7 @@ function AppShell({ user, profile, onLogout }) {
         )}
 
         {screen === 'tags' && (
-          <TagsPage records={records} books={books} onOpenBook={openBook} activeTag={activeTag} onSelectTag={setActiveTag} />
+          <RecordsPage records={records} books={books} onOpenBook={openBook} activeTag={activeTag} onSelectTag={setActiveTag} />
         )}
 
         {screen === 'missions' && (
