@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react';
 import { useGroups } from '../hooks/useGroups.js';
-import { fmtDate } from '../lib/format.js';
+import { fmtDate, pctOf, STATUS_LABELS, STATUS_TAG_CLASS } from '../lib/format.js';
 
 export default function TogetherPage({ userId, nickname }) {
   const {
     groups, members, questions, answers, missions, doneRows, loading,
-    sharedRecords, sharedQuestions, sharedMissions,
+    sharedRecords, sharedQuestions, sharedMissions, sharedBooks,
     createGroup, joinGroup, updateGroup, deleteGroup, addGroupQuestion, upsertAnswer, addGroupMission, toggleGroupMissionDone,
   } = useGroups(userId);
 
@@ -38,8 +38,11 @@ export default function TogetherPage({ userId, nickname }) {
       sharedMissions: sharedMissions
         .filter((m) => m.shared_group_id === g.id)
         .map((m) => ({ ...m, nickname: m.ddok_profiles?.nickname || '독서가' })),
+      sharedBooks: sharedBooks
+        .filter((b) => b.shared_group_id === g.id)
+        .map((b) => ({ ...b, nickname: b.ddok_profiles?.nickname || '독서가' })),
     };
-  }), [groups, members, questions, answers, missions, doneRows, sharedRecords, sharedQuestions, sharedMissions, userId]);
+  }), [groups, members, questions, answers, missions, doneRows, sharedRecords, sharedQuestions, sharedMissions, sharedBooks, userId]);
 
   return (
     <div>
@@ -137,6 +140,39 @@ function GroupCard({ grp, userId, onAddQuestion, onAnswer, onAddMission, onToggl
             </button>
           )}
         </div>
+      </div>
+
+      <div>
+        <h4 style={{ marginBottom: 10, fontSize: 15 }}>멤버 독서 현황판</h4>
+        {grp.sharedBooks.length > 0 ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {grp.sharedBooks.map((b) => {
+              const pct = pctOf(b);
+              return (
+                <div key={b.id} className="blueprint" style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div className="cover-wrap" style={{ width: 36, height: 48, flex: 'none' }}>
+                    {b.cover_url ? <img src={b.cover_url} alt={b.title} /> : <div className="cover-placeholder" style={{ fontSize: 8 }}>cover</div>}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 12, opacity: 0.6 }}>{b.nickname}</div>
+                    <div style={{ fontSize: 14, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {b.title} <span style={{ fontWeight: 400, opacity: 0.6 }}>{b.author}</span>
+                    </div>
+                    <div className="progress-row" style={{ marginTop: 4 }}>
+                      <div className="progress-track">
+                        <span className="progress-fill" style={{ width: `${pct}%` }} />
+                      </div>
+                      <span className="progress-label">{pct}%</span>
+                    </div>
+                  </div>
+                  <span className={STATUS_TAG_CLASS[b.status]} style={{ flex: 'none' }}>{STATUS_LABELS[b.status]}</span>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="empty-state small">아직 공유된 독서 현황이 없어요. 개인 책장 → 책 상세에서 이 모임에 현황을 공유해보세요.</div>
+        )}
       </div>
 
       <div>

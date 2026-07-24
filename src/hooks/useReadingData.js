@@ -16,7 +16,7 @@ export function useReadingData(userId) {
     }
     setLoading(true);
     const [b, r, q, m] = await Promise.all([
-      supabase.from('ddok_books').select('*').eq('owner_id', userId).order('created_at', { ascending: false }),
+      supabase.from('ddok_books').select('*, ddok_groups(name)').eq('owner_id', userId).order('created_at', { ascending: false }),
       supabase.from('ddok_records').select('*, ddok_groups(name)').eq('owner_id', userId).order('created_at', { ascending: false }),
       supabase.from('ddok_questions').select('*, ddok_groups(name)').eq('owner_id', userId).order('created_at', { ascending: false }),
       supabase.from('ddok_missions').select('*, ddok_groups(name)').eq('owner_id', userId).order('created_at', { ascending: false }),
@@ -159,10 +159,16 @@ export function useReadingData(userId) {
     await reload();
   }, [reload]);
 
+  const shareBook = useCallback(async (id, groupId) => {
+    const { error } = await supabase.from('ddok_books').update({ shared_group_id: groupId }).eq('id', id);
+    if (error) throw error;
+    await reload();
+  }, [reload]);
+
   return {
     books, records, questions, missions, loading, reload,
     addBook, updateBook, deleteBook, setBookProgress, addRecord, deleteRecord,
     saveQuestionAnswer, addMissions, toggleMission,
-    shareRecord, shareQuestion, shareMission,
+    shareRecord, shareQuestion, shareMission, shareBook,
   };
 }

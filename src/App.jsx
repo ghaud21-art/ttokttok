@@ -51,7 +51,7 @@ function AppShell({ user, profile, onLogout }) {
     books, records, questions, missions,
     addBook, updateBook, deleteBook, setBookProgress, addRecord, deleteRecord,
     saveQuestionAnswer, addMissions, toggleMission,
-    shareRecord, shareQuestion, shareMission,
+    shareRecord, shareQuestion, shareMission, shareBook,
   } = useReadingData(user.id);
 
   const nickname = profile?.nickname || user.email?.split('@')[0] || '독서가';
@@ -97,6 +97,7 @@ function AppShell({ user, profile, onLogout }) {
             onShareRecord={shareRecord}
             onShareQuestion={shareQuestion}
             onShareMission={shareMission}
+            onShareBook={shareBook}
           />
         )}
 

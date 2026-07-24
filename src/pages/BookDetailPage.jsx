@@ -20,7 +20,7 @@ export default function BookDetailPage({
   userId, book, records, questions, missions,
   onBack, onSetProgress, onAddRecord, onDeleteRecord,
   onSaveQuestion, onAddMissions, onToggleMission, onOpenTag, onGoMissionsArchive,
-  onUpdateBook, onDeleteBook, onShareRecord, onShareQuestion, onShareMission,
+  onUpdateBook, onDeleteBook, onShareRecord, onShareQuestion, onShareMission, onShareBook,
 }) {
   const [questionDrafts, setQuestionDrafts] = useState([]);
   const [aiBusy, setAiBusy] = useState({ questions: false, missions: false });
@@ -103,9 +103,12 @@ export default function BookDetailPage({
             <h1 style={{ margin: '0 0 4px', fontSize: 28 }}>{book.title}</h1>
             <div style={{ opacity: 0.65, fontSize: 14 }}>{book.author}</div>
           </div>
-          <div className="tag-list">
+          <div className="tag-list" style={{ alignItems: 'center' }}>
             <span className={STATUS_TAG_CLASS[book.status]}>{STATUS_LABELS[book.status]}</span>
             <span className="tag tag-neutral">{book.genre}</span>
+            {onShareBook && (
+              <ShareControl groups={myGroups} value={book.shared_group_id} onChange={(gid) => onShareBook(book.id, gid)} />
+            )}
           </div>
           <div style={{ flex: 1, minWidth: 220, display: 'flex', flexDirection: 'column', gap: 6 }}>
             <label style={{ fontSize: 12, opacity: 0.65 }}>현재 {book.current_page} / {book.total_pages} 페이지 · {pct}%</label>

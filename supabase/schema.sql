@@ -403,6 +403,17 @@ create policy "ddok members can view missions shared to their group"
   to authenticated
   using (shared_group_id is not null and public.ddok_is_group_member(shared_group_id));
 
+-- 멤버 독서 현황판: 지금 읽고 있는 책을 그룹에 공유(다른 회원의 ddok_books는 owner만
+-- 조회 가능한 RLS라, 여기서도 shared_group_id + 전용 SELECT 정책으로 열어줌)
+alter table public.ddok_books add column if not exists shared_group_id uuid references public.ddok_groups(id) on delete set null;
+
+create index if not exists ddok_books_shared_group_idx on public.ddok_books(shared_group_id);
+
+create policy "ddok members can view books shared to their group"
+  on public.ddok_books for select
+  to authenticated
+  using (shared_group_id is not null and public.ddok_is_group_member(shared_group_id));
+
 -- ----------------------------------------------------------------------------
 -- Storage : 책 표지 이미지 버킷 (ddok-covers — 다른 앱의 버킷과 겹치지 않도록 이름 지정)
 -- ----------------------------------------------------------------------------
