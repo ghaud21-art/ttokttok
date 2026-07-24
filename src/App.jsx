@@ -48,7 +48,7 @@ function AppShell({ user, profile, onLogout }) {
   const [showAddDialog, setShowAddDialog] = useState(false);
 
   const {
-    books, records, questions, missions,
+    books, records, questions, missions, pageLogs,
     addBook, updateBook, updateRating, deleteBook, setBookProgress, addRecord, deleteRecord,
     saveQuestionAnswer, updateQuestion, deleteQuestion, addMissions, toggleMission,
     shareRecord, shareQuestion, shareMission, shareBook,
@@ -109,7 +109,7 @@ function AppShell({ user, profile, onLogout }) {
         )}
 
         {screen === 'tags' && (
-          <RecordsPage records={records} books={books} onOpenBook={openBook} activeTag={activeTag} onSelectTag={setActiveTag} />
+          <RecordsPage records={records} books={books} pageLogs={pageLogs} onOpenBook={openBook} activeTag={activeTag} onSelectTag={setActiveTag} />
         )}
 
         {screen === 'missions' && (

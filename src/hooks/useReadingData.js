@@ -6,21 +6,23 @@ export function useReadingData(userId) {
   const [records, setRecords] = useState([]);
   const [questions, setQuestions] = useState([]);
   const [missions, setMissions] = useState([]);
+  const [pageLogs, setPageLogs] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const reload = useCallback(async () => {
     if (!userId) {
-      setBooks([]); setRecords([]); setQuestions([]); setMissions([]);
+      setBooks([]); setRecords([]); setQuestions([]); setMissions([]); setPageLogs([]);
       setLoading(false);
       return;
     }
     setLoading(true);
-    const [b, r, q, m, sharesRes] = await Promise.all([
+    const [b, r, q, m, sharesRes, logsRes] = await Promise.all([
       supabase.from('ddok_books').select('*').eq('owner_id', userId).order('created_at', { ascending: false }),
       supabase.from('ddok_records').select('*').eq('owner_id', userId).order('created_at', { ascending: false }),
       supabase.from('ddok_questions').select('*').eq('owner_id', userId).order('created_at', { ascending: false }),
       supabase.from('ddok_missions').select('*').eq('owner_id', userId).order('created_at', { ascending: false }),
       supabase.from('ddok_shares').select('item_type, item_id, group_id').eq('owner_id', userId),
+      supabase.from('ddok_page_logs').select('*').eq('owner_id', userId),
     ]);
 
     const sharesByItem = {};
@@ -36,6 +38,7 @@ export function useReadingData(userId) {
     setRecords(attachShares(r.data, 'record'));
     setQuestions(attachShares(q.data, 'question'));
     setMissions(attachShares(m.data, 'mission'));
+    setPageLogs(logsRes.data || []);
     setLoading(false);
   }, [userId]);
 
@@ -121,8 +124,12 @@ export function useReadingData(userId) {
       .update({ current_page: page, status, finished_at, started_at })
       .eq('id', book.id);
     if (error) throw error;
+    const delta = page - book.current_page;
+    if (delta > 0) {
+      await supabase.from('ddok_page_logs').insert({ book_id: book.id, owner_id: userId, pages_delta: delta });
+    }
     await reload();
-  }, [reload]);
+  }, [userId, reload]);
 
   const addRecord = useCallback(async (bookId, bookTitle, { type, text, tags }) => {
     const { error } = await supabase.from('ddok_records').insert({
@@ -194,7 +201,7 @@ export function useReadingData(userId) {
   const shareBook = useCallback((id, groupIds) => setShares('book', id, groupIds), [setShares]);
 
   return {
-    books, records, questions, missions, loading, reload,
+    books, records, questions, missions, pageLogs, loading, reload,
     addBook, updateBook, updateRating, deleteBook, setBookProgress, addRecord, deleteRecord,
     saveQuestionAnswer, updateQuestion, deleteQuestion, addMissions, toggleMission,
     shareRecord, shareQuestion, shareMission, shareBook,
