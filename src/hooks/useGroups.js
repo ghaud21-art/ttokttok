@@ -12,12 +12,13 @@ export function useGroups(userId) {
   const [sharedQuestions, setSharedQuestions] = useState([]);
   const [sharedMissions, setSharedMissions] = useState([]);
   const [sharedBooks, setSharedBooks] = useState([]);
+  const [questionAnswers, setQuestionAnswers] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const reload = useCallback(async () => {
     if (!userId) {
       setGroups([]); setMembers([]); setQuestions([]); setAnswers([]); setMissions([]); setDoneRows([]);
-      setSharedRecords([]); setSharedQuestions([]); setSharedMissions([]); setSharedBooks([]);
+      setSharedRecords([]); setSharedQuestions([]); setSharedMissions([]); setSharedBooks([]); setQuestionAnswers([]);
       setLoading(false);
       return;
     }
@@ -27,7 +28,7 @@ export function useGroups(userId) {
 
     if (groupIds.length === 0) {
       setGroups([]); setMembers([]); setQuestions([]); setAnswers([]); setMissions([]); setDoneRows([]);
-      setSharedRecords([]); setSharedQuestions([]); setSharedMissions([]); setSharedBooks([]);
+      setSharedRecords([]); setSharedQuestions([]); setSharedMissions([]); setSharedBooks([]); setQuestionAnswers([]);
       setLoading(false);
       return;
     }
@@ -47,13 +48,17 @@ export function useGroups(userId) {
 
     const questionIds = (questionRows || []).map((q) => q.id);
     const missionIds = (missionRows || []).map((m) => m.id);
+    const sharedQuestionIds = (sharedQuestionRows || []).map((q) => q.id);
 
-    const [{ data: answerRows }, { data: doneRowsData }] = await Promise.all([
+    const [{ data: answerRows }, { data: doneRowsData }, { data: questionAnswerRows }] = await Promise.all([
       questionIds.length
         ? supabase.from('ddok_group_answers').select('*, ddok_profiles(nickname)').in('group_question_id', questionIds)
         : Promise.resolve({ data: [] }),
       missionIds.length
         ? supabase.from('ddok_group_mission_done').select('*').in('group_mission_id', missionIds)
+        : Promise.resolve({ data: [] }),
+      sharedQuestionIds.length
+        ? supabase.from('ddok_question_answers').select('*, ddok_profiles(nickname)').in('question_id', sharedQuestionIds)
         : Promise.resolve({ data: [] }),
     ]);
 
@@ -67,6 +72,7 @@ export function useGroups(userId) {
     setSharedQuestions(sharedQuestionRows || []);
     setSharedMissions(sharedMissionRows || []);
     setSharedBooks(sharedBookRows || []);
+    setQuestionAnswers(questionAnswerRows || []);
     setLoading(false);
   }, [userId]);
 
@@ -101,7 +107,19 @@ export function useGroups(userId) {
   }, [reload]);
 
   const addGroupQuestion = useCallback(async (groupId, text) => {
-    const { error } = await supabase.from('ddok_group_questions').insert({ group_id: groupId, text: text.trim() });
+    const { error } = await supabase.from('ddok_group_questions').insert({ group_id: groupId, text: text.trim(), created_by: userId });
+    if (error) throw error;
+    await reload();
+  }, [userId, reload]);
+
+  const updateGroupQuestion = useCallback(async (id, text) => {
+    const { error } = await supabase.from('ddok_group_questions').update({ text: text.trim() }).eq('id', id);
+    if (error) throw error;
+    await reload();
+  }, [reload]);
+
+  const deleteGroupQuestion = useCallback(async (id) => {
+    const { error } = await supabase.from('ddok_group_questions').delete().eq('id', id);
     if (error) throw error;
     await reload();
   }, [reload]);
@@ -115,10 +133,30 @@ export function useGroups(userId) {
   }, [userId, reload]);
 
   const addGroupMission = useCallback(async (groupId, text) => {
-    const { error } = await supabase.from('ddok_group_missions').insert({ group_id: groupId, text: text.trim() });
+    const { error } = await supabase.from('ddok_group_missions').insert({ group_id: groupId, text: text.trim(), created_by: userId });
+    if (error) throw error;
+    await reload();
+  }, [userId, reload]);
+
+  const updateGroupMission = useCallback(async (id, text) => {
+    const { error } = await supabase.from('ddok_group_missions').update({ text: text.trim() }).eq('id', id);
     if (error) throw error;
     await reload();
   }, [reload]);
+
+  const deleteGroupMission = useCallback(async (id) => {
+    const { error } = await supabase.from('ddok_group_missions').delete().eq('id', id);
+    if (error) throw error;
+    await reload();
+  }, [reload]);
+
+  const upsertQuestionAnswer = useCallback(async (questionId, text) => {
+    const { error } = await supabase.from('ddok_question_answers')
+      .upsert({ question_id: questionId, user_id: userId, text, updated_at: new Date().toISOString() },
+        { onConflict: 'question_id,user_id' });
+    if (error) throw error;
+    await reload();
+  }, [userId, reload]);
 
   const toggleGroupMissionDone = useCallback(async (missionId, currentlyDone) => {
     if (currentlyDone) {
@@ -131,7 +169,10 @@ export function useGroups(userId) {
 
   return {
     groups, members, questions, answers, missions, doneRows, loading, reload,
-    sharedRecords, sharedQuestions, sharedMissions, sharedBooks,
-    createGroup, joinGroup, updateGroup, deleteGroup, addGroupQuestion, upsertAnswer, addGroupMission, toggleGroupMissionDone,
+    sharedRecords, sharedQuestions, sharedMissions, sharedBooks, questionAnswers,
+    createGroup, joinGroup, updateGroup, deleteGroup,
+    addGroupQuestion, updateGroupQuestion, deleteGroupQuestion, upsertAnswer,
+    addGroupMission, updateGroupMission, deleteGroupMission, toggleGroupMissionDone,
+    upsertQuestionAnswer,
   };
 }

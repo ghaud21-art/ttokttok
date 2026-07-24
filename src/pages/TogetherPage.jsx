@@ -5,8 +5,11 @@ import { fmtDate, pctOf, STATUS_LABELS, STATUS_TAG_CLASS } from '../lib/format.j
 export default function TogetherPage({ userId, nickname }) {
   const {
     groups, members, questions, answers, missions, doneRows, loading,
-    sharedRecords, sharedQuestions, sharedMissions, sharedBooks,
-    createGroup, joinGroup, updateGroup, deleteGroup, addGroupQuestion, upsertAnswer, addGroupMission, toggleGroupMissionDone,
+    sharedRecords, sharedQuestions, sharedMissions, sharedBooks, questionAnswers,
+    createGroup, joinGroup, updateGroup, deleteGroup,
+    addGroupQuestion, updateGroupQuestion, deleteGroupQuestion, upsertAnswer,
+    addGroupMission, updateGroupMission, deleteGroupMission, toggleGroupMissionDone,
+    upsertQuestionAnswer,
   } = useGroups(userId);
 
   const [showCreate, setShowCreate] = useState(false);
@@ -23,18 +26,25 @@ export default function TogetherPage({ userId, nickname }) {
         const qAnswers = answers.filter((a) => a.group_question_id === q.id);
         const mine = qAnswers.find((a) => a.user_id === userId);
         const others = qAnswers.filter((a) => a.user_id !== userId);
-        return { ...q, myAnswer: mine?.text || '', others };
+        const canManage = q.created_by === userId || g.owner_id === userId;
+        return { ...q, myAnswer: mine?.text || '', others, canManage };
       }),
       missions: groupMissions.map((m) => {
         const doneForMission = doneRows.filter((d) => d.group_mission_id === m.id);
-        return { ...m, doneCount: doneForMission.length, doneByMe: doneForMission.some((d) => d.user_id === userId) };
+        const canManage = m.created_by === userId || g.owner_id === userId;
+        return { ...m, doneCount: doneForMission.length, doneByMe: doneForMission.some((d) => d.user_id === userId), canManage };
       }),
       sharedRecords: sharedRecords
         .filter((r) => r.shared_group_id === g.id)
         .map((r) => ({ ...r, nickname: r.ddok_profiles?.nickname || '독서가' })),
       sharedQuestions: sharedQuestions
         .filter((q) => q.shared_group_id === g.id)
-        .map((q) => ({ ...q, nickname: q.ddok_profiles?.nickname || '독서가' })),
+        .map((q) => {
+          const qAnswers = questionAnswers.filter((a) => a.question_id === q.id);
+          const mine = qAnswers.find((a) => a.user_id === userId);
+          const others = qAnswers.filter((a) => a.user_id !== userId && a.user_id !== q.owner_id);
+          return { ...q, nickname: q.ddok_profiles?.nickname || '독서가', myAnswer: mine?.text || '', others, isMine: q.owner_id === userId };
+        }),
       sharedMissions: sharedMissions
         .filter((m) => m.shared_group_id === g.id)
         .map((m) => ({ ...m, nickname: m.ddok_profiles?.nickname || '독서가' })),
@@ -42,7 +52,7 @@ export default function TogetherPage({ userId, nickname }) {
         .filter((b) => b.shared_group_id === g.id)
         .map((b) => ({ ...b, nickname: b.ddok_profiles?.nickname || '독서가' })),
     };
-  }), [groups, members, questions, answers, missions, doneRows, sharedRecords, sharedQuestions, sharedMissions, sharedBooks, userId]);
+  }), [groups, members, questions, answers, missions, doneRows, sharedRecords, sharedQuestions, sharedMissions, sharedBooks, questionAnswers, userId]);
 
   return (
     <div>
@@ -70,11 +80,16 @@ export default function TogetherPage({ userId, nickname }) {
             grp={grp}
             userId={userId}
             onAddQuestion={(text) => addGroupQuestion(grp.id, text)}
+            onUpdateQuestion={(id, text) => updateGroupQuestion(id, text)}
+            onDeleteQuestion={(id) => deleteGroupQuestion(id)}
             onAnswer={(qId, text) => upsertAnswer(qId, text)}
             onAddMission={(text) => addGroupMission(grp.id, text)}
+            onUpdateMission={(id, text) => updateGroupMission(id, text)}
+            onDeleteMission={(id) => deleteGroupMission(id)}
             onToggleMission={(missionId, doneByMe) => toggleGroupMissionDone(missionId, doneByMe)}
             onUpdateGroup={(payload) => updateGroup(grp.id, payload)}
             onDeleteGroup={() => deleteGroup(grp.id)}
+            onAnswerSharedQuestion={(qId, text) => upsertQuestionAnswer(qId, text)}
           />
         ))}
       </div>
@@ -95,7 +110,11 @@ export default function TogetherPage({ userId, nickname }) {
   );
 }
 
-function GroupCard({ grp, userId, onAddQuestion, onAnswer, onAddMission, onToggleMission, onUpdateGroup, onDeleteGroup }) {
+function GroupCard({
+  grp, userId, onAddQuestion, onUpdateQuestion, onDeleteQuestion, onAnswer,
+  onAddMission, onUpdateMission, onDeleteMission, onToggleMission,
+  onUpdateGroup, onDeleteGroup, onAnswerSharedQuestion,
+}) {
   const [newQuestion, setNewQuestion] = useState('');
   const [newMission, setNewMission] = useState('');
   const [showEditGroup, setShowEditGroup] = useState(false);
@@ -179,7 +198,11 @@ function GroupCard({ grp, userId, onAddQuestion, onAnswer, onAddMission, onToggl
         <h4 style={{ marginBottom: 10, fontSize: 15 }}>함께 질문</h4>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {grp.questions.map((q) => (
-            <GroupQuestion key={q.id} q={q} onAnswer={(text) => onAnswer(q.id, text)} />
+            <GroupQuestion
+              key={q.id} q={q} onAnswer={(text) => onAnswer(q.id, text)}
+              onEdit={(text) => onUpdateQuestion(q.id, text)}
+              onDelete={() => onDeleteQuestion(q.id)}
+            />
           ))}
         </div>
         <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
@@ -197,11 +220,12 @@ function GroupCard({ grp, userId, onAddQuestion, onAnswer, onAddMission, onToggl
         <h4 style={{ marginBottom: 10, fontSize: 15 }}>함께 미션</h4>
         <div className="blueprint mission-list">
           {grp.missions.map((m) => (
-            <label className="mission-row" key={m.id}>
-              <input type="checkbox" checked={m.doneByMe} onChange={() => onToggleMission(m.id, m.doneByMe)} />
-              <span className="mission-text">{m.text}</span>
-              <span style={{ fontSize: 11, color: 'var(--color-neutral-600)' }}>{m.doneCount}/{grp.members.length} 완료</span>
-            </label>
+            <GroupMissionRow
+              key={m.id} m={m} memberCount={grp.members.length}
+              onToggle={() => onToggleMission(m.id, m.doneByMe)}
+              onEdit={(text) => onUpdateMission(m.id, text)}
+              onDelete={() => onDeleteMission(m.id)}
+            />
           ))}
         </div>
         <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
@@ -240,11 +264,7 @@ function GroupCard({ grp, userId, onAddQuestion, onAnswer, onAddMission, onToggl
         {grp.sharedQuestions.length > 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {grp.sharedQuestions.map((q) => (
-              <div className="blueprint" style={{ padding: 14 }} key={q.id}>
-                <div style={{ fontSize: 12, opacity: 0.6, marginBottom: 4 }}>{q.nickname} · {q.book_title}</div>
-                <div style={{ fontSize: 13, opacity: 0.7, marginBottom: 6 }}>{q.question}</div>
-                <div style={{ fontSize: 14 }}>나의 생각: {q.my_thought}</div>
-              </div>
+              <SharedQuestion key={q.id} q={q} onAnswer={(text) => onAnswerSharedQuestion(q.id, text)} />
             ))}
           </div>
         ) : (
@@ -280,11 +300,41 @@ function GroupCard({ grp, userId, onAddQuestion, onAnswer, onAddMission, onToggl
   );
 }
 
-function GroupQuestion({ q, onAnswer }) {
+function GroupQuestion({ q, onAnswer, onEdit, onDelete }) {
   const [text, setText] = useState(q.myAnswer);
+  const [editing, setEditing] = useState(false);
+  const [editText, setEditText] = useState(q.text);
+
+  const saveEdit = async () => {
+    if (!editText.trim()) return;
+    await onEdit(editText);
+    setEditing(false);
+  };
+
+  const handleDelete = () => {
+    if (!window.confirm('이 질문을 삭제할까요? 다른 멤버들의 답변도 함께 사라져요.')) return;
+    onDelete();
+  };
+
   return (
     <div className="blueprint" style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <div style={{ fontSize: 14, fontWeight: 500 }}>{q.text}</div>
+      {editing ? (
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input className="input" value={editText} onChange={(e) => setEditText(e.target.value)} />
+          <button type="button" className="btn btn-secondary" style={{ fontSize: 12 }} onClick={saveEdit}>저장</button>
+          <button type="button" className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => { setEditing(false); setEditText(q.text); }}>취소</button>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+          <div style={{ fontSize: 14, fontWeight: 500 }}>{q.text}</div>
+          {q.canManage && (
+            <div style={{ display: 'flex', gap: 4, flex: 'none' }}>
+              <button type="button" className="link-btn" style={{ fontSize: 12 }} onClick={() => setEditing(true)}>수정</button>
+              <button type="button" className="link-btn" style={{ fontSize: 12, color: '#b3413a' }} onClick={handleDelete}>삭제</button>
+            </div>
+          )}
+        </div>
+      )}
       {q.others.map((a) => (
         <div key={a.id} style={{ fontSize: 13, color: 'var(--color-neutral-700)' }}>
           <b style={{ color: 'var(--color-text)' }}>{a.ddok_profiles?.nickname || '독서가'}</b> · {a.text}
@@ -296,6 +346,80 @@ function GroupQuestion({ q, onAnswer }) {
         onBlur={() => { if (text.trim() && text !== q.myAnswer) onAnswer(text); }}
         style={{ minHeight: 52 }}
       />
+    </div>
+  );
+}
+
+function GroupMissionRow({ m, memberCount, onToggle, onEdit, onDelete }) {
+  const [editing, setEditing] = useState(false);
+  const [editText, setEditText] = useState(m.text);
+
+  const saveEdit = async () => {
+    if (!editText.trim()) return;
+    await onEdit(editText);
+    setEditing(false);
+  };
+
+  const handleDelete = () => {
+    if (!window.confirm('이 미션을 삭제할까요? 멤버들의 완료 기록도 함께 사라져요.')) return;
+    onDelete();
+  };
+
+  if (editing) {
+    return (
+      <div className="mission-row">
+        <input className="input" style={{ flex: 1 }} value={editText} onChange={(e) => setEditText(e.target.value)} />
+        <button type="button" className="btn btn-secondary" style={{ fontSize: 12 }} onClick={saveEdit}>저장</button>
+        <button type="button" className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => { setEditing(false); setEditText(m.text); }}>취소</button>
+      </div>
+    );
+  }
+
+  return (
+    <label className="mission-row">
+      <input type="checkbox" checked={m.doneByMe} onChange={onToggle} />
+      <span className="mission-text">{m.text}</span>
+      <span style={{ fontSize: 11, color: 'var(--color-neutral-600)' }}>{m.doneCount}/{memberCount} 완료</span>
+      {m.canManage && (
+        <span style={{ display: 'flex', gap: 4, flex: 'none' }}>
+          <button
+            type="button" className="link-btn" style={{ fontSize: 12 }}
+            onClick={(e) => { e.preventDefault(); setEditing(true); }}
+          >
+            수정
+          </button>
+          <button
+            type="button" className="link-btn" style={{ fontSize: 12, color: '#b3413a' }}
+            onClick={(e) => { e.preventDefault(); handleDelete(); }}
+          >
+            삭제
+          </button>
+        </span>
+      )}
+    </label>
+  );
+}
+
+function SharedQuestion({ q, onAnswer }) {
+  const [text, setText] = useState(q.myAnswer);
+  return (
+    <div className="blueprint" style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ fontSize: 12, opacity: 0.6 }}>{q.nickname} · {q.book_title}</div>
+      <div style={{ fontSize: 13, opacity: 0.7 }}>{q.question}</div>
+      <div style={{ fontSize: 14 }}>나의 생각: {q.my_thought}</div>
+      {q.others.map((a) => (
+        <div key={a.id} style={{ fontSize: 13, color: 'var(--color-neutral-700)' }}>
+          <b style={{ color: 'var(--color-text)' }}>{a.ddok_profiles?.nickname || '독서가'}</b> · {a.text}
+        </div>
+      ))}
+      {!q.isMine && (
+        <textarea
+          className="input" placeholder="이 질문에 대한 나의 생각도 남겨보세요" value={text}
+          onChange={(e) => setText(e.target.value)}
+          onBlur={() => { if (text.trim() && text !== q.myAnswer) onAnswer(text); }}
+          style={{ minHeight: 48 }}
+        />
+      )}
     </div>
   );
 }

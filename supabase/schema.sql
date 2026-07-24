@@ -176,6 +176,7 @@ create table if not exists public.ddok_group_questions (
   id uuid primary key default gen_random_uuid(),
   group_id uuid not null references public.ddok_groups(id) on delete cascade,
   text text not null,
+  created_by uuid references public.ddok_profiles(id) on delete set null,
   created_at timestamptz not null default now()
 );
 
@@ -196,6 +197,7 @@ create table if not exists public.ddok_group_missions (
   id uuid primary key default gen_random_uuid(),
   group_id uuid not null references public.ddok_groups(id) on delete cascade,
   text text not null,
+  created_by uuid references public.ddok_profiles(id) on delete set null,
   created_at timestamptz not null default now()
 );
 
@@ -303,7 +305,23 @@ create policy "ddok members can read group questions"
 create policy "ddok members can add group questions"
   on public.ddok_group_questions for insert
   to authenticated
-  with check (public.ddok_is_group_member(group_id));
+  with check (public.ddok_is_group_member(group_id) and created_by = auth.uid());
+
+create policy "ddok creator or group owner can update group questions"
+  on public.ddok_group_questions for update
+  to authenticated
+  using (
+    created_by = auth.uid()
+    or exists (select 1 from public.ddok_groups g where g.id = group_id and g.owner_id = auth.uid())
+  );
+
+create policy "ddok creator or group owner can delete group questions"
+  on public.ddok_group_questions for delete
+  to authenticated
+  using (
+    created_by = auth.uid()
+    or exists (select 1 from public.ddok_groups g where g.id = group_id and g.owner_id = auth.uid())
+  );
 
 -- ddok_group_answers 정책
 create policy "ddok members can read answers in their groups"
@@ -341,7 +359,23 @@ create policy "ddok members can read group missions"
 create policy "ddok members can add group missions"
   on public.ddok_group_missions for insert
   to authenticated
-  with check (public.ddok_is_group_member(group_id));
+  with check (public.ddok_is_group_member(group_id) and created_by = auth.uid());
+
+create policy "ddok creator or group owner can update group missions"
+  on public.ddok_group_missions for update
+  to authenticated
+  using (
+    created_by = auth.uid()
+    or exists (select 1 from public.ddok_groups g where g.id = group_id and g.owner_id = auth.uid())
+  );
+
+create policy "ddok creator or group owner can delete group missions"
+  on public.ddok_group_missions for delete
+  to authenticated
+  using (
+    created_by = auth.uid()
+    or exists (select 1 from public.ddok_groups g where g.id = group_id and g.owner_id = auth.uid())
+  );
 
 -- ddok_group_mission_done 정책
 create policy "ddok members can read mission completion in their groups"
@@ -413,6 +447,53 @@ create policy "ddok members can view books shared to their group"
   on public.ddok_books for select
   to authenticated
   using (shared_group_id is not null and public.ddok_is_group_member(shared_group_id));
+
+-- ----------------------------------------------------------------------------
+-- ddok_question_answers : 공유된 개인 AI 질문 노트에 다른 멤버가 남기는 답변
+-- ----------------------------------------------------------------------------
+create table if not exists public.ddok_question_answers (
+  id uuid primary key default gen_random_uuid(),
+  question_id uuid not null references public.ddok_questions(id) on delete cascade,
+  user_id uuid not null references public.ddok_profiles(id) on delete cascade,
+  text text not null,
+  updated_at timestamptz not null default now(),
+  unique (question_id, user_id)
+);
+
+alter table public.ddok_question_answers enable row level security;
+
+create index if not exists ddok_question_answers_question_idx on public.ddok_question_answers(question_id);
+
+create policy "ddok members can read answers to shared questions"
+  on public.ddok_question_answers for select
+  to authenticated
+  using (
+    exists (
+      select 1 from public.ddok_questions q
+      where q.id = question_id and q.shared_group_id is not null and public.ddok_is_group_member(q.shared_group_id)
+    )
+  );
+
+create policy "ddok members can write their own answer to shared questions"
+  on public.ddok_question_answers for insert
+  to authenticated
+  with check (
+    user_id = auth.uid()
+    and exists (
+      select 1 from public.ddok_questions q
+      where q.id = question_id and q.shared_group_id is not null and public.ddok_is_group_member(q.shared_group_id)
+    )
+  );
+
+create policy "ddok members can update their own answer to shared questions"
+  on public.ddok_question_answers for update
+  to authenticated
+  using (user_id = auth.uid());
+
+create policy "ddok members can delete their own answer to shared questions"
+  on public.ddok_question_answers for delete
+  to authenticated
+  using (user_id = auth.uid());
 
 -- ----------------------------------------------------------------------------
 -- Storage : 책 표지 이미지 버킷 (ddok-covers — 다른 앱의 버킷과 겹치지 않도록 이름 지정)

@@ -121,6 +121,18 @@ export function useReadingData(userId) {
     await reload();
   }, [userId, reload]);
 
+  const updateQuestion = useCallback(async (id, myThought) => {
+    const { error } = await supabase.from('ddok_questions').update({ my_thought: myThought.trim() }).eq('id', id);
+    if (error) throw error;
+    await reload();
+  }, [reload]);
+
+  const deleteQuestion = useCallback(async (id) => {
+    const { error } = await supabase.from('ddok_questions').delete().eq('id', id);
+    if (error) throw error;
+    await reload();
+  }, [reload]);
+
   const addMissions = useCallback(async (bookId, bookTitle, texts, staleIds) => {
     if (staleIds?.length) {
       await supabase.from('ddok_missions').delete().in('id', staleIds).eq('done', false);
@@ -168,7 +180,7 @@ export function useReadingData(userId) {
   return {
     books, records, questions, missions, loading, reload,
     addBook, updateBook, deleteBook, setBookProgress, addRecord, deleteRecord,
-    saveQuestionAnswer, addMissions, toggleMission,
+    saveQuestionAnswer, updateQuestion, deleteQuestion, addMissions, toggleMission,
     shareRecord, shareQuestion, shareMission, shareBook,
   };
 }

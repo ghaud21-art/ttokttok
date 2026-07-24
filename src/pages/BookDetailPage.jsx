@@ -19,7 +19,7 @@ const SPARKLE = (
 export default function BookDetailPage({
   userId, book, records, questions, missions,
   onBack, onSetProgress, onAddRecord, onDeleteRecord,
-  onSaveQuestion, onAddMissions, onToggleMission, onOpenTag, onGoMissionsArchive,
+  onSaveQuestion, onUpdateQuestion, onDeleteQuestion, onAddMissions, onToggleMission, onOpenTag, onGoMissionsArchive,
   onUpdateBook, onDeleteBook, onShareRecord, onShareQuestion, onShareMission, onShareBook,
 }) {
   const [questionDrafts, setQuestionDrafts] = useState([]);
@@ -166,16 +166,12 @@ export default function BookDetailPage({
             <h4 style={{ marginBottom: 10, opacity: 0.7 }}>나의 독서 노트</h4>
             <div>
               {bookQuestions.map((q) => (
-                <div className="notebook-item" key={q.id}>
-                  <div style={{ fontSize: 13, opacity: 0.65, marginBottom: 6 }}>{q.question}</div>
-                  <div style={{ fontSize: 14 }}>나의 생각: {q.my_thought}</div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
-                    <div className="timestamp">{fmtDate(q.created_at)}</div>
-                    {onShareQuestion && (
-                      <ShareControl groups={myGroups} value={q.shared_group_id} onChange={(gid) => onShareQuestion(q.id, gid)} />
-                    )}
-                  </div>
-                </div>
+                <NotebookItem
+                  key={q.id} q={q} groups={myGroups}
+                  onShare={onShareQuestion}
+                  onUpdate={(myThought) => onUpdateQuestion(q.id, myThought)}
+                  onDelete={() => onDeleteQuestion(q.id)}
+                />
               ))}
             </div>
           </div>
@@ -206,6 +202,57 @@ export default function BookDetailPage({
           onSubmit={async (payload) => { await onUpdateBook(book.id, payload); setShowEditDialog(false); }}
         />
       )}
+    </div>
+  );
+}
+
+function NotebookItem({ q, groups, onShare, onUpdate, onDelete }) {
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState(q.my_thought);
+  const [busy, setBusy] = useState(false);
+
+  const save = async () => {
+    if (!text.trim()) return;
+    setBusy(true);
+    try {
+      await onUpdate(text);
+      setEditing(false);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleDelete = () => {
+    if (!window.confirm('이 독서 노트를 삭제할까요?')) return;
+    onDelete();
+  };
+
+  return (
+    <div className="notebook-item">
+      <div style={{ fontSize: 13, opacity: 0.65, marginBottom: 6 }}>{q.question}</div>
+      {editing ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <textarea className="input" value={text} onChange={(e) => setText(e.target.value)} style={{ minHeight: 60 }} />
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button type="button" className="btn btn-secondary" style={{ fontSize: 13 }} onClick={save} disabled={busy}>저장</button>
+            <button type="button" className="btn btn-ghost" style={{ fontSize: 13 }} onClick={() => { setEditing(false); setText(q.my_thought); }}>취소</button>
+          </div>
+        </div>
+      ) : (
+        <div style={{ fontSize: 14 }}>나의 생각: {q.my_thought}</div>
+      )}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
+        <div className="timestamp">{fmtDate(q.created_at)}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {!editing && (
+            <>
+              <button type="button" className="link-btn" style={{ fontSize: 12 }} onClick={() => setEditing(true)}>수정</button>
+              <button type="button" className="link-btn" style={{ fontSize: 12, color: '#b3413a' }} onClick={handleDelete}>삭제</button>
+            </>
+          )}
+          {onShare && <ShareControl groups={groups} value={q.shared_group_id} onChange={(gid) => onShare(q.id, gid)} />}
+        </div>
+      </div>
     </div>
   );
 }

@@ -50,7 +50,7 @@ function AppShell({ user, profile, onLogout }) {
   const {
     books, records, questions, missions,
     addBook, updateBook, deleteBook, setBookProgress, addRecord, deleteRecord,
-    saveQuestionAnswer, addMissions, toggleMission,
+    saveQuestionAnswer, updateQuestion, deleteQuestion, addMissions, toggleMission,
     shareRecord, shareQuestion, shareMission, shareBook,
   } = useReadingData(user.id);
 
@@ -88,6 +88,8 @@ function AppShell({ user, profile, onLogout }) {
             onAddRecord={addRecord}
             onDeleteRecord={deleteRecord}
             onSaveQuestion={saveQuestionAnswer}
+            onUpdateQuestion={updateQuestion}
+            onDeleteQuestion={deleteQuestion}
             onAddMissions={addMissions}
             onToggleMission={toggleMission}
             onOpenTag={openTag}
