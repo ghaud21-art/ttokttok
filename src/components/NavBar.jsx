@@ -1,7 +1,7 @@
 const LINKS = [
   { key: 'shelf', label: '책장' },
   { key: 'together', label: '함께읽기' },
-  { key: 'tags', label: '태그 모아보기' },
+  { key: 'tags', label: '기록 모아보기' },
   { key: 'missions', label: '실천 기록' },
 ];
 

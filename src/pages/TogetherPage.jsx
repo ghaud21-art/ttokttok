@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react';
 import { useGroups } from '../hooks/useGroups.js';
+import { fmtDate } from '../lib/format.js';
 
 export default function TogetherPage({ userId, nickname }) {
   const {
     groups, members, questions, answers, missions, doneRows, loading,
-    createGroup, joinGroup, addGroupQuestion, upsertAnswer, addGroupMission, toggleGroupMissionDone,
+    sharedRecords, sharedQuestions, sharedMissions,
+    createGroup, joinGroup, updateGroupBook, addGroupQuestion, upsertAnswer, addGroupMission, toggleGroupMissionDone,
   } = useGroups(userId);
 
   const [showCreate, setShowCreate] = useState(false);
@@ -16,7 +18,7 @@ export default function TogetherPage({ userId, nickname }) {
     const groupMissions = missions.filter((m) => m.group_id === g.id);
     return {
       ...g,
-      members: groupMembers.map((m) => ({ id: m.user_id, nickname: m.profiles?.nickname || '독서가' })),
+      members: groupMembers.map((m) => ({ id: m.user_id, nickname: m.ddok_profiles?.nickname || '독서가' })),
       questions: groupQuestions.map((q) => {
         const qAnswers = answers.filter((a) => a.group_question_id === q.id);
         const mine = qAnswers.find((a) => a.user_id === userId);
@@ -27,15 +29,24 @@ export default function TogetherPage({ userId, nickname }) {
         const doneForMission = doneRows.filter((d) => d.group_mission_id === m.id);
         return { ...m, doneCount: doneForMission.length, doneByMe: doneForMission.some((d) => d.user_id === userId) };
       }),
+      sharedRecords: sharedRecords
+        .filter((r) => r.shared_group_id === g.id)
+        .map((r) => ({ ...r, nickname: r.ddok_profiles?.nickname || '독서가' })),
+      sharedQuestions: sharedQuestions
+        .filter((q) => q.shared_group_id === g.id)
+        .map((q) => ({ ...q, nickname: q.ddok_profiles?.nickname || '독서가' })),
+      sharedMissions: sharedMissions
+        .filter((m) => m.shared_group_id === g.id)
+        .map((m) => ({ ...m, nickname: m.ddok_profiles?.nickname || '독서가' })),
     };
-  }), [groups, members, questions, answers, missions, doneRows, userId]);
+  }), [groups, members, questions, answers, missions, doneRows, sharedRecords, sharedQuestions, sharedMissions, userId]);
 
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12, marginBottom: 6 }}>
         <div>
           <h2 style={{ marginBottom: 6 }}>함께읽기</h2>
-          <p style={{ opacity: 0.6, fontSize: 14 }}>같은 책을 읽는 사람들과 질문과 미션을 함께 나눠보세요.</p>
+          <p style={{ opacity: 0.6, fontSize: 14 }}>같은 책을 읽는 사람들과 질문·미션·기록을 함께 나눠보세요.</p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button type="button" className="btn btn-secondary" onClick={() => setShowJoin(true)}>초대코드로 참여</button>
@@ -59,6 +70,7 @@ export default function TogetherPage({ userId, nickname }) {
             onAnswer={(qId, text) => upsertAnswer(qId, text)}
             onAddMission={(text) => addGroupMission(grp.id, text)}
             onToggleMission={(missionId, doneByMe) => toggleGroupMissionDone(missionId, doneByMe)}
+            onUpdateBook={(payload) => updateGroupBook(grp.id, payload)}
           />
         ))}
       </div>
@@ -79,9 +91,11 @@ export default function TogetherPage({ userId, nickname }) {
   );
 }
 
-function GroupCard({ grp, userId, onAddQuestion, onAnswer, onAddMission, onToggleMission }) {
+function GroupCard({ grp, userId, onAddQuestion, onAnswer, onAddMission, onToggleMission, onUpdateBook }) {
   const [newQuestion, setNewQuestion] = useState('');
   const [newMission, setNewMission] = useState('');
+  const [showEditBook, setShowEditBook] = useState(false);
+  const isOwner = grp.owner_id === userId;
 
   return (
     <div className="blueprint group-card">
@@ -89,7 +103,12 @@ function GroupCard({ grp, userId, onAddQuestion, onAnswer, onAddMission, onToggl
         <div>
           <div className="card-kicker">함께 읽는 중</div>
           <h3 style={{ margin: '2px 0 4px' }}>{grp.name}</h3>
-          <div style={{ fontSize: 13, opacity: 0.65 }}>{grp.book_title} · {grp.book_author}</div>
+          <div style={{ fontSize: 13, opacity: 0.65, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span>{grp.book_title || '아직 책이 정해지지 않았어요'} {grp.book_author && `· ${grp.book_author}`}</span>
+            {isOwner && (
+              <button type="button" className="link-btn" style={{ fontSize: 12 }} onClick={() => setShowEditBook(true)}>책 변경</button>
+            )}
+          </div>
           <div style={{ marginTop: 6 }}>
             초대코드 <span className="invite-code">{grp.invite_code}</span>
           </div>
@@ -140,6 +159,68 @@ function GroupCard({ grp, userId, onAddQuestion, onAnswer, onAddMission, onToggl
           </button>
         </div>
       </div>
+
+      <div>
+        <h4 style={{ marginBottom: 10, fontSize: 15 }}>멤버들이 공유한 기록</h4>
+        {grp.sharedRecords.length > 0 ? (
+          <div className="record-grid">
+            {grp.sharedRecords.map((r) => (
+              <div className="blueprint record-card" key={r.id}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                  <span className={r.type === 'quote' ? 'tag tag-outline' : 'tag tag-accent'}>{r.type === 'quote' ? '인용구' : '인사이트'}</span>
+                  <span style={{ fontSize: 12, opacity: 0.6 }}>{r.nickname} · {r.book_title}</span>
+                </div>
+                <p style={{ margin: 0, fontSize: 14, lineHeight: 1.55 }}>{r.text}</p>
+                <div className="timestamp">{fmtDate(r.created_at)}</div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="empty-state small">아직 공유된 기록이 없어요. 개인 책장의 기록 카드에서 이 모임에 공유해보세요.</div>
+        )}
+      </div>
+
+      <div>
+        <h4 style={{ marginBottom: 10, fontSize: 15 }}>멤버들의 AI 질문 노트</h4>
+        {grp.sharedQuestions.length > 0 ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {grp.sharedQuestions.map((q) => (
+              <div className="blueprint" style={{ padding: 14 }} key={q.id}>
+                <div style={{ fontSize: 12, opacity: 0.6, marginBottom: 4 }}>{q.nickname} · {q.book_title}</div>
+                <div style={{ fontSize: 13, opacity: 0.7, marginBottom: 6 }}>{q.question}</div>
+                <div style={{ fontSize: 14 }}>나의 생각: {q.my_thought}</div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="empty-state small">아직 공유된 질문 노트가 없어요.</div>
+        )}
+      </div>
+
+      <div>
+        <h4 style={{ marginBottom: 10, fontSize: 15 }}>멤버들의 AI 미션</h4>
+        {grp.sharedMissions.length > 0 ? (
+          <div className="blueprint mission-list">
+            {grp.sharedMissions.map((m) => (
+              <div className="mission-row" key={m.id}>
+                <span style={{ fontSize: 16, flex: 'none' }}>{m.done ? '✅' : '⬜'}</span>
+                <span className="mission-text">{m.text}</span>
+                <span style={{ fontSize: 11, color: 'var(--color-neutral-600)' }}>{m.nickname}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="empty-state small">아직 공유된 미션이 없어요.</div>
+        )}
+      </div>
+
+      {showEditBook && (
+        <EditGroupBookDialog
+          grp={grp}
+          onClose={() => setShowEditBook(false)}
+          onSubmit={async (payload) => { await onUpdateBook(payload); setShowEditBook(false); }}
+        />
+      )}
     </div>
   );
 }
@@ -151,7 +232,7 @@ function GroupQuestion({ q, onAnswer }) {
       <div style={{ fontSize: 14, fontWeight: 500 }}>{q.text}</div>
       {q.others.map((a) => (
         <div key={a.id} style={{ fontSize: 13, color: 'var(--color-neutral-700)' }}>
-          <b style={{ color: 'var(--color-text)' }}>{a.profiles?.nickname || '독서가'}</b> · {a.text}
+          <b style={{ color: 'var(--color-text)' }}>{a.ddok_profiles?.nickname || '독서가'}</b> · {a.text}
         </div>
       ))}
       <textarea
@@ -187,6 +268,32 @@ function CreateGroupDialog({ onClose, onSubmit }) {
         <div className="dialog-actions">
           <button type="button" className="btn btn-secondary" onClick={onClose}>취소</button>
           <button type="submit" className="btn btn-primary" disabled={busy}>{busy ? '생성 중...' : '만들기'}</button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function EditGroupBookDialog({ grp, onClose, onSubmit }) {
+  const [bookTitle, setBookTitle] = useState(grp.book_title || '');
+  const [bookAuthor, setBookAuthor] = useState(grp.book_author || '');
+  const [busy, setBusy] = useState(false);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setBusy(true);
+    try { await onSubmit({ bookTitle, bookAuthor }); } finally { setBusy(false); }
+  };
+
+  return (
+    <div className="dialog-backdrop" onClick={onClose}>
+      <form className="dialog" onSubmit={submit} onClick={(e) => e.stopPropagation()}>
+        <div className="dialog-title">읽을 책 바꾸기</div>
+        <div className="field"><label>책 제목</label><input className="input" value={bookTitle} onChange={(e) => setBookTitle(e.target.value)} /></div>
+        <div className="field"><label>저자</label><input className="input" value={bookAuthor} onChange={(e) => setBookAuthor(e.target.value)} /></div>
+        <div className="dialog-actions">
+          <button type="button" className="btn btn-secondary" onClick={onClose}>취소</button>
+          <button type="submit" className="btn btn-primary" disabled={busy}>{busy ? '저장 중...' : '저장'}</button>
         </div>
       </form>
     </div>

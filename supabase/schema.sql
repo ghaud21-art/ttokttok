@@ -371,6 +371,39 @@ create policy "ddok members can remove their own mission completion"
   using (user_id = auth.uid());
 
 -- ----------------------------------------------------------------------------
+-- 개인 기록/질문/미션을 특정 함께읽기 모임에 공유하기
+-- (ddok_groups, ddok_is_group_member 정의 이후에 와야 하므로 파일 뒷부분에 위치)
+-- ----------------------------------------------------------------------------
+alter table public.ddok_records add column if not exists shared_group_id uuid references public.ddok_groups(id) on delete set null;
+alter table public.ddok_questions add column if not exists shared_group_id uuid references public.ddok_groups(id) on delete set null;
+alter table public.ddok_missions add column if not exists shared_group_id uuid references public.ddok_groups(id) on delete set null;
+
+-- 책 제목을 그대로 복사해두어 다른 멤버가 공유된 항목을 볼 때도 표시할 수 있게 함
+-- (ddok_books는 owner만 조회 가능한 RLS라 다른 멤버가 조인해서 제목을 못 읽기 때문)
+alter table public.ddok_records add column if not exists book_title text not null default '';
+alter table public.ddok_questions add column if not exists book_title text not null default '';
+alter table public.ddok_missions add column if not exists book_title text not null default '';
+
+create index if not exists ddok_records_shared_group_idx on public.ddok_records(shared_group_id);
+create index if not exists ddok_questions_shared_group_idx on public.ddok_questions(shared_group_id);
+create index if not exists ddok_missions_shared_group_idx on public.ddok_missions(shared_group_id);
+
+create policy "ddok members can view records shared to their group"
+  on public.ddok_records for select
+  to authenticated
+  using (shared_group_id is not null and public.ddok_is_group_member(shared_group_id));
+
+create policy "ddok members can view questions shared to their group"
+  on public.ddok_questions for select
+  to authenticated
+  using (shared_group_id is not null and public.ddok_is_group_member(shared_group_id));
+
+create policy "ddok members can view missions shared to their group"
+  on public.ddok_missions for select
+  to authenticated
+  using (shared_group_id is not null and public.ddok_is_group_member(shared_group_id));
+
+-- ----------------------------------------------------------------------------
 -- Storage : 책 표지 이미지 버킷 (ddok-covers — 다른 앱의 버킷과 겹치지 않도록 이름 지정)
 -- ----------------------------------------------------------------------------
 insert into storage.buckets (id, name, public)

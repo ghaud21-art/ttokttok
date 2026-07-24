@@ -2,11 +2,13 @@ import { useRef, useState } from 'react';
 import { STATUS_LABELS, STATUS_TAG_CLASS, pctOf, fmtDate } from '../lib/format.js';
 import { parseTags } from '../lib/format.js';
 import { generateQuestions, generateMissions } from '../lib/gemini.js';
+import { useMyGroups } from '../hooks/useMyGroups.js';
 import RecordForm from '../components/RecordForm.jsx';
 import RecordCard from '../components/RecordCard.jsx';
 import QuestionCard from '../components/QuestionCard.jsx';
 import MissionList from '../components/MissionList.jsx';
 import AddBookDialog from '../components/AddBookDialog.jsx';
+import ShareControl from '../components/ShareControl.jsx';
 
 const SPARKLE = (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -18,7 +20,7 @@ export default function BookDetailPage({
   userId, book, records, questions, missions,
   onBack, onSetProgress, onAddRecord, onDeleteRecord,
   onSaveQuestion, onAddMissions, onToggleMission, onOpenTag, onGoMissionsArchive,
-  onUpdateBook, onDeleteBook,
+  onUpdateBook, onDeleteBook, onShareRecord, onShareQuestion, onShareMission,
 }) {
   const [questionDrafts, setQuestionDrafts] = useState([]);
   const [aiBusy, setAiBusy] = useState({ questions: false, missions: false });
@@ -26,6 +28,7 @@ export default function BookDetailPage({
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const lastGenMissionIds = useRef([]);
+  const { groups: myGroups } = useMyGroups(userId);
 
   const bookRecords = records.filter((r) => r.book_id === book.id).slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   const bookQuestions = questions.filter((q) => q.book_id === book.id).slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
@@ -33,7 +36,7 @@ export default function BookDetailPage({
   const pct = pctOf(book);
 
   const submitRecord = async ({ type, text, tagsText }) => {
-    await onAddRecord(book.id, { type, text, tags: parseTags(tagsText) });
+    await onAddRecord(book.id, book.title, { type, text, tags: parseTags(tagsText) });
   };
 
   const runGenerateQuestions = async () => {
@@ -54,7 +57,7 @@ export default function BookDetailPage({
     setAiBusy((s) => ({ ...s, missions: true }));
     try {
       const { missions: ms } = await generateMissions(book, records);
-      const newIds = await onAddMissions(book.id, (ms || []).slice(0, 5), lastGenMissionIds.current);
+      const newIds = await onAddMissions(book.id, book.title, (ms || []).slice(0, 5), lastGenMissionIds.current);
       lastGenMissionIds.current = newIds;
     } catch (err) {
       setAiError(err.message || '미션 생성에 실패했어요.');
@@ -128,7 +131,10 @@ export default function BookDetailPage({
         {bookRecords.length > 0 ? (
           <div className="record-grid">
             {bookRecords.map((r) => (
-              <RecordCard key={r.id} record={r} onDelete={onDeleteRecord} onTagClick={onOpenTag} />
+              <RecordCard
+                key={r.id} record={r} onDelete={onDeleteRecord} onTagClick={onOpenTag}
+                groups={myGroups} onShare={onShareRecord}
+              />
             ))}
           </div>
         ) : (
@@ -148,7 +154,7 @@ export default function BookDetailPage({
         {questionDrafts.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {questionDrafts.map((d) => (
-              <QuestionCard key={d.id} draft={d} onSave={(question, thought) => onSaveQuestion(book.id, question, thought)} />
+              <QuestionCard key={d.id} draft={d} onSave={(question, thought) => onSaveQuestion(book.id, book.title, question, thought)} />
             ))}
           </div>
         )}
@@ -160,7 +166,12 @@ export default function BookDetailPage({
                 <div className="notebook-item" key={q.id}>
                   <div style={{ fontSize: 13, opacity: 0.65, marginBottom: 6 }}>{q.question}</div>
                   <div style={{ fontSize: 14 }}>나의 생각: {q.my_thought}</div>
-                  <div className="timestamp" style={{ marginTop: 6 }}>{fmtDate(q.created_at)}</div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
+                    <div className="timestamp">{fmtDate(q.created_at)}</div>
+                    {onShareQuestion && (
+                      <ShareControl groups={myGroups} value={q.shared_group_id} onChange={(gid) => onShareQuestion(q.id, gid)} />
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -176,7 +187,9 @@ export default function BookDetailPage({
             {aiBusy.missions ? '생성 중...' : bookMissions.length > 0 ? '미션 다시 생성하기' : '미션 생성하기'}
           </button>
         </div>
-        {bookMissions.length > 0 && <MissionList missions={bookMissions} onToggle={onToggleMission} />}
+        {bookMissions.length > 0 && (
+          <MissionList missions={bookMissions} onToggle={onToggleMission} groups={myGroups} onShare={onShareMission} />
+        )}
         <p style={{ fontSize: 12, opacity: 0.55, marginTop: 12 }}>
           완료한 미션은 <span className="link-btn" onClick={onGoMissionsArchive}>실천 기록</span>에서 모아볼 수 있어요.
         </p>

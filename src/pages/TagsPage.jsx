@@ -24,7 +24,7 @@ export default function TagsPage({ records, books, onOpenBook, activeTag, onSele
 
   return (
     <div>
-      <h2 style={{ marginBottom: 18 }}>태그 모아보기</h2>
+      <h2 style={{ marginBottom: 18 }}>기록 모아보기</h2>
       {tagCounts.length > 0 ? (
         <div className="tag-cloud">
           {tagCounts.map(([name, count]) => (

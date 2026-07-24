@@ -17,9 +17,9 @@ export function useReadingData(userId) {
     setLoading(true);
     const [b, r, q, m] = await Promise.all([
       supabase.from('ddok_books').select('*').eq('owner_id', userId).order('created_at', { ascending: false }),
-      supabase.from('ddok_records').select('*').eq('owner_id', userId).order('created_at', { ascending: false }),
-      supabase.from('ddok_questions').select('*').eq('owner_id', userId).order('created_at', { ascending: false }),
-      supabase.from('ddok_missions').select('*').eq('owner_id', userId).order('created_at', { ascending: false }),
+      supabase.from('ddok_records').select('*, ddok_groups(name)').eq('owner_id', userId).order('created_at', { ascending: false }),
+      supabase.from('ddok_questions').select('*, ddok_groups(name)').eq('owner_id', userId).order('created_at', { ascending: false }),
+      supabase.from('ddok_missions').select('*, ddok_groups(name)').eq('owner_id', userId).order('created_at', { ascending: false }),
     ]);
     setBooks(b.data || []);
     setRecords(r.data || []);
@@ -99,9 +99,9 @@ export function useReadingData(userId) {
     await reload();
   }, [reload]);
 
-  const addRecord = useCallback(async (bookId, { type, text, tags }) => {
+  const addRecord = useCallback(async (bookId, bookTitle, { type, text, tags }) => {
     const { error } = await supabase.from('ddok_records').insert({
-      book_id: bookId, owner_id: userId, type, text: text.trim(), tags,
+      book_id: bookId, owner_id: userId, book_title: bookTitle, type, text: text.trim(), tags,
     });
     if (error) throw error;
     await reload();
@@ -113,19 +113,19 @@ export function useReadingData(userId) {
     await reload();
   }, [reload]);
 
-  const saveQuestionAnswer = useCallback(async (bookId, question, myThought) => {
+  const saveQuestionAnswer = useCallback(async (bookId, bookTitle, question, myThought) => {
     const { error } = await supabase.from('ddok_questions').insert({
-      book_id: bookId, owner_id: userId, question, my_thought: myThought.trim(),
+      book_id: bookId, owner_id: userId, book_title: bookTitle, question, my_thought: myThought.trim(),
     });
     if (error) throw error;
     await reload();
   }, [userId, reload]);
 
-  const addMissions = useCallback(async (bookId, texts, staleIds) => {
+  const addMissions = useCallback(async (bookId, bookTitle, texts, staleIds) => {
     if (staleIds?.length) {
       await supabase.from('ddok_missions').delete().in('id', staleIds).eq('done', false);
     }
-    const rows = texts.map((text) => ({ book_id: bookId, owner_id: userId, text }));
+    const rows = texts.map((text) => ({ book_id: bookId, owner_id: userId, book_title: bookTitle, text }));
     const { data, error } = await supabase.from('ddok_missions').insert(rows).select();
     if (error) throw error;
     await reload();
@@ -141,9 +141,28 @@ export function useReadingData(userId) {
     await reload();
   }, [reload]);
 
+  const shareRecord = useCallback(async (id, groupId) => {
+    const { error } = await supabase.from('ddok_records').update({ shared_group_id: groupId }).eq('id', id);
+    if (error) throw error;
+    await reload();
+  }, [reload]);
+
+  const shareQuestion = useCallback(async (id, groupId) => {
+    const { error } = await supabase.from('ddok_questions').update({ shared_group_id: groupId }).eq('id', id);
+    if (error) throw error;
+    await reload();
+  }, [reload]);
+
+  const shareMission = useCallback(async (id, groupId) => {
+    const { error } = await supabase.from('ddok_missions').update({ shared_group_id: groupId }).eq('id', id);
+    if (error) throw error;
+    await reload();
+  }, [reload]);
+
   return {
     books, records, questions, missions, loading, reload,
     addBook, updateBook, deleteBook, setBookProgress, addRecord, deleteRecord,
     saveQuestionAnswer, addMissions, toggleMission,
+    shareRecord, shareQuestion, shareMission,
   };
 }
