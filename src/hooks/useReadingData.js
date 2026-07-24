@@ -48,6 +48,38 @@ export function useReadingData(userId) {
     await reload();
   }, [userId, reload]);
 
+  const updateBook = useCallback(async (bookId, book) => {
+    const existing = books.find((b) => b.id === bookId);
+    const total = parseInt(book.totalPages, 10) || 0;
+    let current_page = existing ? Math.min(existing.current_page, total || existing.current_page) : 0;
+    let finished_at = existing?.finished_at || null;
+    if (book.status === 'done') {
+      current_page = total;
+      finished_at = finished_at || new Date().toISOString();
+    } else {
+      finished_at = null;
+    }
+    const row = {
+      title: book.title.trim(),
+      author: (book.author || '').trim(),
+      genre: (book.genre || '').trim() || '미분류',
+      total_pages: total,
+      current_page,
+      status: book.status,
+      cover_url: book.coverUrl || '',
+      finished_at,
+    };
+    const { error } = await supabase.from('ddok_books').update(row).eq('id', bookId);
+    if (error) throw error;
+    await reload();
+  }, [books, reload]);
+
+  const deleteBook = useCallback(async (bookId) => {
+    const { error } = await supabase.from('ddok_books').delete().eq('id', bookId);
+    if (error) throw error;
+    await reload();
+  }, [reload]);
+
   const setBookProgress = useCallback(async (book, rawPage) => {
     let page = parseInt(rawPage, 10);
     if (Number.isNaN(page) || page < 0) page = 0;
@@ -111,7 +143,7 @@ export function useReadingData(userId) {
 
   return {
     books, records, questions, missions, loading, reload,
-    addBook, setBookProgress, addRecord, deleteRecord,
+    addBook, updateBook, deleteBook, setBookProgress, addRecord, deleteRecord,
     saveQuestionAnswer, addMissions, toggleMission,
   };
 }

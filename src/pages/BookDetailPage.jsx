@@ -6,6 +6,7 @@ import RecordForm from '../components/RecordForm.jsx';
 import RecordCard from '../components/RecordCard.jsx';
 import QuestionCard from '../components/QuestionCard.jsx';
 import MissionList from '../components/MissionList.jsx';
+import AddBookDialog from '../components/AddBookDialog.jsx';
 
 const SPARKLE = (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -14,13 +15,16 @@ const SPARKLE = (
 );
 
 export default function BookDetailPage({
-  book, records, questions, missions,
+  userId, book, records, questions, missions,
   onBack, onSetProgress, onAddRecord, onDeleteRecord,
   onSaveQuestion, onAddMissions, onToggleMission, onOpenTag, onGoMissionsArchive,
+  onUpdateBook, onDeleteBook,
 }) {
   const [questionDrafts, setQuestionDrafts] = useState([]);
   const [aiBusy, setAiBusy] = useState({ questions: false, missions: false });
   const [aiError, setAiError] = useState('');
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [deleteBusy, setDeleteBusy] = useState(false);
   const lastGenMissionIds = useRef([]);
 
   const bookRecords = records.filter((r) => r.book_id === book.id).slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
@@ -59,14 +63,33 @@ export default function BookDetailPage({
     }
   };
 
+  const handleDelete = async () => {
+    if (!window.confirm('정말 이 책을 삭제할까요? 이 책의 기록·질문·미션도 함께 삭제됩니다.')) return;
+    setDeleteBusy(true);
+    try {
+      await onDeleteBook(book.id);
+      onBack();
+    } finally {
+      setDeleteBusy(false);
+    }
+  };
+
   return (
     <div>
-      <button type="button" className="btn btn-ghost" style={{ marginBottom: 18 }} onClick={onBack}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M15 18l-6-6 6-6" />
-        </svg>
-        책장으로
-      </button>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 18 }}>
+        <button type="button" className="btn btn-ghost" onClick={onBack}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+          책장으로
+        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button type="button" className="btn btn-secondary" onClick={() => setShowEditDialog(true)}>수정</button>
+          <button type="button" className="btn btn-danger" onClick={handleDelete} disabled={deleteBusy}>
+            {deleteBusy ? '삭제 중...' : '삭제'}
+          </button>
+        </div>
+      </div>
 
       <div className="blueprint book-header">
         <div className="cover-wrap book-cover-lg">
@@ -158,6 +181,15 @@ export default function BookDetailPage({
           완료한 미션은 <span className="link-btn" onClick={onGoMissionsArchive}>실천 기록</span>에서 모아볼 수 있어요.
         </p>
       </div>
+
+      {showEditDialog && (
+        <AddBookDialog
+          userId={userId}
+          book={book}
+          onClose={() => setShowEditDialog(false)}
+          onSubmit={async (payload) => { await onUpdateBook(book.id, payload); setShowEditDialog(false); }}
+        />
+      )}
     </div>
   );
 }

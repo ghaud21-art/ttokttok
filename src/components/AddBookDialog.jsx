@@ -7,15 +7,16 @@ const STATUS_OPTIONS = [
   { key: 'want', label: '읽고 싶음' },
 ];
 
-export default function AddBookDialog({ userId, onClose, onSubmit }) {
-  const [title, setTitle] = useState('');
-  const [author, setAuthor] = useState('');
-  const [genre, setGenre] = useState('');
-  const [totalPages, setTotalPages] = useState('');
-  const [status, setStatus] = useState('reading');
+export default function AddBookDialog({ userId, book, onClose, onSubmit }) {
+  const isEdit = Boolean(book);
+  const [title, setTitle] = useState(book?.title || '');
+  const [author, setAuthor] = useState(book?.author || '');
+  const [genre, setGenre] = useState(book?.genre || '');
+  const [totalPages, setTotalPages] = useState(book?.total_pages ? String(book.total_pages) : '');
+  const [status, setStatus] = useState(book?.status || 'reading');
   const [coverFile, setCoverFile] = useState(null);
   const [coverPreview, setCoverPreview] = useState('');
-  const [coverUrl, setCoverUrl] = useState('');
+  const [coverUrl, setCoverUrl] = useState(book?.cover_url || '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -47,7 +48,7 @@ export default function AddBookDialog({ userId, onClose, onSubmit }) {
   return (
     <div className="dialog-backdrop" onClick={onClose}>
       <form className="dialog" onSubmit={submit} onClick={(e) => e.stopPropagation()}>
-        <div className="dialog-title">책 등록</div>
+        <div className="dialog-title">{isEdit ? '책 정보 수정' : '책 등록'}</div>
         <div className="field">
           <label>제목</label>
           <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="책 제목" />
@@ -100,7 +101,9 @@ export default function AddBookDialog({ userId, onClose, onSubmit }) {
         {error && <div className="error-text">{error}</div>}
         <div className="dialog-actions">
           <button type="button" className="btn btn-secondary" onClick={onClose}>취소</button>
-          <button type="submit" className="btn btn-primary" disabled={busy}>{busy ? '등록 중...' : '등록'}</button>
+          <button type="submit" className="btn btn-primary" disabled={busy}>
+            {busy ? (isEdit ? '저장 중...' : '등록 중...') : (isEdit ? '저장' : '등록')}
+          </button>
         </div>
       </form>
     </div>

@@ -49,7 +49,7 @@ function AppShell({ user, profile, onLogout }) {
 
   const {
     books, records, questions, missions,
-    addBook, setBookProgress, addRecord, deleteRecord,
+    addBook, updateBook, deleteBook, setBookProgress, addRecord, deleteRecord,
     saveQuestionAnswer, addMissions, toggleMission,
   } = useReadingData(user.id);
 
@@ -77,6 +77,7 @@ function AppShell({ user, profile, onLogout }) {
 
         {screen === 'detail' && activeBook && (
           <BookDetailPage
+            userId={user.id}
             book={activeBook}
             records={records}
             questions={questions}
@@ -90,6 +91,8 @@ function AppShell({ user, profile, onLogout }) {
             onToggleMission={toggleMission}
             onOpenTag={openTag}
             onGoMissionsArchive={() => setScreen('missions')}
+            onUpdateBook={updateBook}
+            onDeleteBook={deleteBook}
           />
         )}
 
