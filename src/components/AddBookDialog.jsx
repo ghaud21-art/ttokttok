@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { uploadCoverImage } from '../lib/storage.js';
+import StarRating from './StarRating.jsx';
 
 const STATUS_OPTIONS = [
   { key: 'reading', label: '읽는 중' },
@@ -17,6 +18,7 @@ export default function AddBookDialog({ userId, book, onClose, onSubmit }) {
   const [totalPages, setTotalPages] = useState(book?.total_pages ? String(book.total_pages) : '');
   const [status, setStatus] = useState(book?.status || 'reading');
   const [startedAt, setStartedAt] = useState(book?.started_at ? book.started_at.slice(0, 10) : today());
+  const [rating, setRating] = useState(book?.rating || null);
   const [coverFile, setCoverFile] = useState(null);
   const [coverPreview, setCoverPreview] = useState('');
   const [coverUrl, setCoverUrl] = useState(book?.cover_url || '');
@@ -40,7 +42,7 @@ export default function AddBookDialog({ userId, book, onClose, onSubmit }) {
       if (coverFile) {
         finalCoverUrl = await uploadCoverImage(coverFile, userId);
       }
-      await onSubmit({ title, author, genre, totalPages, status, coverUrl: finalCoverUrl, startedAt: status === 'want' ? '' : startedAt });
+      await onSubmit({ title, author, genre, totalPages, status, coverUrl: finalCoverUrl, startedAt: status === 'want' ? '' : startedAt, rating });
     } catch (err) {
       setError(err.message || '등록 중 문제가 발생했어요.');
     } finally {
@@ -87,6 +89,10 @@ export default function AddBookDialog({ userId, book, onClose, onSubmit }) {
             <input className="input" type="date" value={startedAt} onChange={(e) => setStartedAt(e.target.value)} />
           </div>
         )}
+        <div className="field">
+          <label>별점</label>
+          <StarRating value={rating} onChange={setRating} size={24} />
+        </div>
         <div className="field">
           <label>표지 이미지</label>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>

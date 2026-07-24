@@ -1,4 +1,5 @@
 import { STATUS_LABELS, STATUS_TAG_CLASS, pctOf } from '../lib/format.js';
+import StarRating from './StarRating.jsx';
 
 export default function BookCard({ book, onOpen }) {
   const pct = pctOf(book);
@@ -14,6 +15,7 @@ export default function BookCard({ book, onOpen }) {
       <div>
         <div className="card-title">{book.title}</div>
         <div style={{ fontSize: 12, opacity: 0.6, marginTop: 2 }}>{book.author}</div>
+        {book.rating > 0 && <div style={{ marginTop: 4 }}><StarRating value={book.rating} size={13} /></div>}
       </div>
       <div className="tag-list">
         <span className={STATUS_TAG_CLASS[book.status]}>{STATUS_LABELS[book.status]}</span>

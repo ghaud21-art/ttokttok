@@ -52,6 +52,7 @@ export function useReadingData(userId) {
       current_page: book.status === 'done' ? total : 0,
       status: book.status,
       cover_url: book.coverUrl || '',
+      rating: book.rating || null,
       started_at: book.status === 'want' ? null : (book.startedAt || new Date().toISOString()),
       finished_at: book.status === 'done' ? new Date().toISOString() : null,
     };
@@ -80,6 +81,7 @@ export function useReadingData(userId) {
       current_page,
       status: book.status,
       cover_url: book.coverUrl || '',
+      rating: book.rating || null,
       started_at,
       finished_at,
     };
@@ -87,6 +89,12 @@ export function useReadingData(userId) {
     if (error) throw error;
     await reload();
   }, [books, reload]);
+
+  const updateRating = useCallback(async (bookId, rating) => {
+    const { error } = await supabase.from('ddok_books').update({ rating }).eq('id', bookId);
+    if (error) throw error;
+    await reload();
+  }, [reload]);
 
   const deleteBook = useCallback(async (bookId) => {
     const { error } = await supabase.from('ddok_books').delete().eq('id', bookId);
@@ -187,7 +195,7 @@ export function useReadingData(userId) {
 
   return {
     books, records, questions, missions, loading, reload,
-    addBook, updateBook, deleteBook, setBookProgress, addRecord, deleteRecord,
+    addBook, updateBook, updateRating, deleteBook, setBookProgress, addRecord, deleteRecord,
     saveQuestionAnswer, updateQuestion, deleteQuestion, addMissions, toggleMission,
     shareRecord, shareQuestion, shareMission, shareBook,
   };

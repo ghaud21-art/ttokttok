@@ -9,6 +9,7 @@ import QuestionCard from '../components/QuestionCard.jsx';
 import MissionList from '../components/MissionList.jsx';
 import AddBookDialog from '../components/AddBookDialog.jsx';
 import ShareControl from '../components/ShareControl.jsx';
+import StarRating from '../components/StarRating.jsx';
 
 const SPARKLE = (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -20,7 +21,7 @@ export default function BookDetailPage({
   userId, book, records, questions, missions,
   onBack, onSetProgress, onAddRecord, onDeleteRecord,
   onSaveQuestion, onUpdateQuestion, onDeleteQuestion, onAddMissions, onToggleMission, onOpenTag, onGoMissionsArchive,
-  onUpdateBook, onDeleteBook, onShareRecord, onShareQuestion, onShareMission, onShareBook,
+  onUpdateBook, onDeleteBook, onShareRecord, onShareQuestion, onShareMission, onShareBook, onUpdateRating,
 }) {
   const [questionDrafts, setQuestionDrafts] = useState([]);
   const [aiBusy, setAiBusy] = useState({ questions: false, missions: false });
@@ -103,6 +104,9 @@ export default function BookDetailPage({
             <h1 style={{ margin: '0 0 4px', fontSize: 28 }}>{book.title}</h1>
             <div style={{ opacity: 0.65, fontSize: 14 }}>{book.author}</div>
           </div>
+          {onUpdateRating && (
+            <StarRating value={book.rating} onChange={(r) => onUpdateRating(book.id, r)} size={22} />
+          )}
           <div className="tag-list" style={{ alignItems: 'center' }}>
             <span className={STATUS_TAG_CLASS[book.status]}>{STATUS_LABELS[book.status]}</span>
             <span className="tag tag-neutral">{book.genre}</span>

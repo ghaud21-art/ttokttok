@@ -49,7 +49,7 @@ function AppShell({ user, profile, onLogout }) {
 
   const {
     books, records, questions, missions,
-    addBook, updateBook, deleteBook, setBookProgress, addRecord, deleteRecord,
+    addBook, updateBook, updateRating, deleteBook, setBookProgress, addRecord, deleteRecord,
     saveQuestionAnswer, updateQuestion, deleteQuestion, addMissions, toggleMission,
     shareRecord, shareQuestion, shareMission, shareBook,
   } = useReadingData(user.id);
@@ -100,6 +100,7 @@ function AppShell({ user, profile, onLogout }) {
             onShareQuestion={shareQuestion}
             onShareMission={shareMission}
             onShareBook={shareBook}
+            onUpdateRating={updateRating}
           />
         )}
 
