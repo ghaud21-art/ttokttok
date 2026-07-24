@@ -6,7 +6,7 @@ export default function TogetherPage({ userId, nickname }) {
   const {
     groups, members, questions, answers, missions, doneRows, loading,
     sharedRecords, sharedQuestions, sharedMissions,
-    createGroup, joinGroup, updateGroupBook, addGroupQuestion, upsertAnswer, addGroupMission, toggleGroupMissionDone,
+    createGroup, joinGroup, updateGroup, deleteGroup, addGroupQuestion, upsertAnswer, addGroupMission, toggleGroupMissionDone,
   } = useGroups(userId);
 
   const [showCreate, setShowCreate] = useState(false);
@@ -70,7 +70,8 @@ export default function TogetherPage({ userId, nickname }) {
             onAnswer={(qId, text) => upsertAnswer(qId, text)}
             onAddMission={(text) => addGroupMission(grp.id, text)}
             onToggleMission={(missionId, doneByMe) => toggleGroupMissionDone(missionId, doneByMe)}
-            onUpdateBook={(payload) => updateGroupBook(grp.id, payload)}
+            onUpdateGroup={(payload) => updateGroup(grp.id, payload)}
+            onDeleteGroup={() => deleteGroup(grp.id)}
           />
         ))}
       </div>
@@ -91,11 +92,22 @@ export default function TogetherPage({ userId, nickname }) {
   );
 }
 
-function GroupCard({ grp, userId, onAddQuestion, onAnswer, onAddMission, onToggleMission, onUpdateBook }) {
+function GroupCard({ grp, userId, onAddQuestion, onAnswer, onAddMission, onToggleMission, onUpdateGroup, onDeleteGroup }) {
   const [newQuestion, setNewQuestion] = useState('');
   const [newMission, setNewMission] = useState('');
-  const [showEditBook, setShowEditBook] = useState(false);
+  const [showEditGroup, setShowEditGroup] = useState(false);
+  const [deleteBusy, setDeleteBusy] = useState(false);
   const isOwner = grp.owner_id === userId;
+
+  const handleDelete = async () => {
+    if (!window.confirm(`정말 '${grp.name}' 모임을 삭제할까요? 모임의 질문·미션·공유 기록이 모두 사라지고, 되돌릴 수 없어요.`)) return;
+    setDeleteBusy(true);
+    try {
+      await onDeleteGroup();
+    } finally {
+      setDeleteBusy(false);
+    }
+  };
 
   return (
     <div className="blueprint group-card">
@@ -106,17 +118,24 @@ function GroupCard({ grp, userId, onAddQuestion, onAnswer, onAddMission, onToggl
           <div style={{ fontSize: 13, opacity: 0.65, display: 'flex', alignItems: 'center', gap: 8 }}>
             <span>{grp.book_title || '아직 책이 정해지지 않았어요'} {grp.book_author && `· ${grp.book_author}`}</span>
             {isOwner && (
-              <button type="button" className="link-btn" style={{ fontSize: 12 }} onClick={() => setShowEditBook(true)}>책 변경</button>
+              <button type="button" className="link-btn" style={{ fontSize: 12 }} onClick={() => setShowEditGroup(true)}>모임 정보 수정</button>
             )}
           </div>
           <div style={{ marginTop: 6 }}>
             초대코드 <span className="invite-code">{grp.invite_code}</span>
           </div>
         </div>
-        <div className="member-chips">
-          {grp.members.map((mem) => (
-            <span key={mem.id} className={`tag ${mem.id === userId ? 'tag-accent' : 'tag-neutral'}`}>{mem.nickname}</span>
-          ))}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10 }}>
+          <div className="member-chips">
+            {grp.members.map((mem) => (
+              <span key={mem.id} className={`tag ${mem.id === userId ? 'tag-accent' : 'tag-neutral'}`}>{mem.nickname}</span>
+            ))}
+          </div>
+          {isOwner && (
+            <button type="button" className="btn btn-danger" style={{ fontSize: 12 }} onClick={handleDelete} disabled={deleteBusy}>
+              {deleteBusy ? '삭제 중...' : '모임 삭제'}
+            </button>
+          )}
         </div>
       </div>
 
@@ -214,11 +233,11 @@ function GroupCard({ grp, userId, onAddQuestion, onAnswer, onAddMission, onToggl
         )}
       </div>
 
-      {showEditBook && (
-        <EditGroupBookDialog
+      {showEditGroup && (
+        <EditGroupDialog
           grp={grp}
-          onClose={() => setShowEditBook(false)}
-          onSubmit={async (payload) => { await onUpdateBook(payload); setShowEditBook(false); }}
+          onClose={() => setShowEditGroup(false)}
+          onSubmit={async (payload) => { await onUpdateGroup(payload); setShowEditGroup(false); }}
         />
       )}
     </div>
@@ -274,23 +293,29 @@ function CreateGroupDialog({ onClose, onSubmit }) {
   );
 }
 
-function EditGroupBookDialog({ grp, onClose, onSubmit }) {
+function EditGroupDialog({ grp, onClose, onSubmit }) {
+  const [name, setName] = useState(grp.name || '');
   const [bookTitle, setBookTitle] = useState(grp.book_title || '');
   const [bookAuthor, setBookAuthor] = useState(grp.book_author || '');
+  const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
   const submit = async (e) => {
     e.preventDefault();
+    if (!name.trim()) { setError('모임 이름을 입력해주세요.'); return; }
     setBusy(true);
-    try { await onSubmit({ bookTitle, bookAuthor }); } finally { setBusy(false); }
+    setError('');
+    try { await onSubmit({ name, bookTitle, bookAuthor }); } finally { setBusy(false); }
   };
 
   return (
     <div className="dialog-backdrop" onClick={onClose}>
       <form className="dialog" onSubmit={submit} onClick={(e) => e.stopPropagation()}>
-        <div className="dialog-title">읽을 책 바꾸기</div>
+        <div className="dialog-title">모임 정보 수정</div>
+        <div className="field"><label>모임 이름</label><input className="input" value={name} onChange={(e) => setName(e.target.value)} /></div>
         <div className="field"><label>책 제목</label><input className="input" value={bookTitle} onChange={(e) => setBookTitle(e.target.value)} /></div>
         <div className="field"><label>저자</label><input className="input" value={bookAuthor} onChange={(e) => setBookAuthor(e.target.value)} /></div>
+        {error && <div className="error-text">{error}</div>}
         <div className="dialog-actions">
           <button type="button" className="btn btn-secondary" onClick={onClose}>취소</button>
           <button type="submit" className="btn btn-primary" disabled={busy}>{busy ? '저장 중...' : '저장'}</button>

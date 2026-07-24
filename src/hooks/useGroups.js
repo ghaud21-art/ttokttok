@@ -77,10 +77,16 @@ export function useGroups(userId) {
     await reload();
   }, [userId, reload]);
 
-  const updateGroupBook = useCallback(async (groupId, { bookTitle, bookAuthor }) => {
+  const updateGroup = useCallback(async (groupId, { name, bookTitle, bookAuthor }) => {
     const { error } = await supabase.from('ddok_groups')
-      .update({ book_title: bookTitle.trim(), book_author: bookAuthor.trim() })
+      .update({ name: name.trim(), book_title: bookTitle.trim(), book_author: bookAuthor.trim() })
       .eq('id', groupId);
+    if (error) throw error;
+    await reload();
+  }, [reload]);
+
+  const deleteGroup = useCallback(async (groupId) => {
+    const { error } = await supabase.from('ddok_groups').delete().eq('id', groupId);
     if (error) throw error;
     await reload();
   }, [reload]);
@@ -123,6 +129,6 @@ export function useGroups(userId) {
   return {
     groups, members, questions, answers, missions, doneRows, loading, reload,
     sharedRecords, sharedQuestions, sharedMissions,
-    createGroup, joinGroup, updateGroupBook, addGroupQuestion, upsertAnswer, addGroupMission, toggleGroupMissionDone,
+    createGroup, joinGroup, updateGroup, deleteGroup, addGroupQuestion, upsertAnswer, addGroupMission, toggleGroupMissionDone,
   };
 }
