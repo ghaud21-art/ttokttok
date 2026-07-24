@@ -14,6 +14,7 @@ export default function TogetherPage({ userId, nickname }) {
 
   const [showCreate, setShowCreate] = useState(false);
   const [showJoin, setShowJoin] = useState(false);
+  const [activeGroupId, setActiveGroupId] = useState(null);
 
   const groupsView = useMemo(() => groups.map((g) => {
     const groupMembers = members.filter((m) => m.group_id === g.id);
@@ -54,6 +55,29 @@ export default function TogetherPage({ userId, nickname }) {
     };
   }), [groups, members, questions, answers, missions, doneRows, sharedRecords, sharedQuestions, sharedMissions, sharedBooks, questionAnswers, userId]);
 
+  const activeGroup = groupsView.find((g) => g.id === activeGroupId) || null;
+
+  if (activeGroup) {
+    return (
+      <GroupDetailView
+        grp={activeGroup}
+        userId={userId}
+        onBack={() => setActiveGroupId(null)}
+        onAddQuestion={(text) => addGroupQuestion(activeGroup.id, text)}
+        onUpdateQuestion={(id, text) => updateGroupQuestion(id, text)}
+        onDeleteQuestion={(id) => deleteGroupQuestion(id)}
+        onAnswer={(qId, text) => upsertAnswer(qId, text)}
+        onAddMission={(text) => addGroupMission(activeGroup.id, text)}
+        onUpdateMission={(id, text) => updateGroupMission(id, text)}
+        onDeleteMission={(id) => deleteGroupMission(id)}
+        onToggleMission={(missionId, doneByMe) => toggleGroupMissionDone(missionId, doneByMe)}
+        onUpdateGroup={(payload) => updateGroup(activeGroup.id, payload)}
+        onDeleteGroup={async () => { await deleteGroup(activeGroup.id); setActiveGroupId(null); }}
+        onAnswerSharedQuestion={(qId, text) => upsertQuestionAnswer(qId, text)}
+      />
+    );
+  }
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12, marginBottom: 6 }}>
@@ -73,24 +97,9 @@ export default function TogetherPage({ userId, nickname }) {
         </div>
       )}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 22, marginTop: 22 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 22 }}>
         {groupsView.map((grp) => (
-          <GroupCard
-            key={grp.id}
-            grp={grp}
-            userId={userId}
-            onAddQuestion={(text) => addGroupQuestion(grp.id, text)}
-            onUpdateQuestion={(id, text) => updateGroupQuestion(id, text)}
-            onDeleteQuestion={(id) => deleteGroupQuestion(id)}
-            onAnswer={(qId, text) => upsertAnswer(qId, text)}
-            onAddMission={(text) => addGroupMission(grp.id, text)}
-            onUpdateMission={(id, text) => updateGroupMission(id, text)}
-            onDeleteMission={(id) => deleteGroupMission(id)}
-            onToggleMission={(missionId, doneByMe) => toggleGroupMissionDone(missionId, doneByMe)}
-            onUpdateGroup={(payload) => updateGroup(grp.id, payload)}
-            onDeleteGroup={() => deleteGroup(grp.id)}
-            onAnswerSharedQuestion={(qId, text) => upsertQuestionAnswer(qId, text)}
-          />
+          <GroupSummaryCard key={grp.id} grp={grp} userId={userId} onOpen={() => setActiveGroupId(grp.id)} />
         ))}
       </div>
 
@@ -110,8 +119,33 @@ export default function TogetherPage({ userId, nickname }) {
   );
 }
 
-function GroupCard({
-  grp, userId, onAddQuestion, onUpdateQuestion, onDeleteQuestion, onAnswer,
+function GroupSummaryCard({ grp, userId, onOpen }) {
+  const sharedCount = grp.sharedRecords.length + grp.sharedQuestions.length + grp.sharedMissions.length + grp.sharedBooks.length;
+  return (
+    <div className="blueprint group-card" style={{ cursor: 'pointer', padding: 20 }} onClick={onOpen}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
+        <div>
+          <div className="card-kicker">함께읽기 모임</div>
+          <h3 style={{ margin: '2px 0 4px' }}>{grp.name}</h3>
+          <div style={{ fontSize: 12, opacity: 0.6 }}>
+            질문 {grp.questions.length}개 · 미션 {grp.missions.length}개 · 공유된 항목 {sharedCount}건
+          </div>
+          <div style={{ marginTop: 6 }}>
+            초대코드 <span className="invite-code">{grp.invite_code}</span>
+          </div>
+        </div>
+        <div className="member-chips">
+          {grp.members.map((mem) => (
+            <span key={mem.id} className={`tag ${mem.id === userId ? 'tag-accent' : 'tag-neutral'}`}>{mem.nickname}</span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function GroupDetailView({
+  grp, userId, onBack, onAddQuestion, onUpdateQuestion, onDeleteQuestion, onAnswer,
   onAddMission, onUpdateMission, onDeleteMission, onToggleMission,
   onUpdateGroup, onDeleteGroup, onAnswerSharedQuestion,
 }) {
@@ -164,154 +198,163 @@ function GroupCard({
   };
 
   return (
-    <div className="blueprint group-card">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
-        <div>
-          <div className="card-kicker">함께읽기 모임</div>
-          <h3 style={{ margin: '2px 0 4px' }}>{grp.name}</h3>
-          {isOwner && (
-            <button type="button" className="link-btn" style={{ fontSize: 12 }} onClick={() => setShowEditGroup(true)}>모임 이름 수정</button>
-          )}
-          <div style={{ marginTop: 6 }}>
-            초대코드 <span className="invite-code">{grp.invite_code}</span>
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 18 }}>
+        <button type="button" className="btn btn-ghost" onClick={onBack}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+          모임 목록으로
+        </button>
+        {isOwner && (
+          <button type="button" className="btn btn-danger" style={{ fontSize: 12 }} onClick={handleDelete} disabled={deleteBusy}>
+            {deleteBusy ? '삭제 중...' : '모임 삭제'}
+          </button>
+        )}
+      </div>
+
+      <div className="blueprint group-card">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
+          <div>
+            <div className="card-kicker">함께읽기 모임</div>
+            <h3 style={{ margin: '2px 0 4px' }}>{grp.name}</h3>
+            {isOwner && (
+              <button type="button" className="link-btn" style={{ fontSize: 12 }} onClick={() => setShowEditGroup(true)}>모임 이름 수정</button>
+            )}
+            <div style={{ marginTop: 6 }}>
+              초대코드 <span className="invite-code">{grp.invite_code}</span>
+            </div>
           </div>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10 }}>
           <div className="member-chips">
             {grp.members.map((mem) => (
               <span key={mem.id} className={`tag ${mem.id === userId ? 'tag-accent' : 'tag-neutral'}`}>{mem.nickname}</span>
             ))}
           </div>
-          {isOwner && (
-            <button type="button" className="btn btn-danger" style={{ fontSize: 12 }} onClick={handleDelete} disabled={deleteBusy}>
-              {deleteBusy ? '삭제 중...' : '모임 삭제'}
-            </button>
+        </div>
+
+        <div>
+          <h4 style={{ marginBottom: 10, fontSize: 15 }}>멤버 독서 현황판</h4>
+          {grp.sharedBooks.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {grp.sharedBooks.map((b) => {
+                const pct = pctOf(b);
+                return (
+                  <div key={b.id} className="blueprint" style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div className="cover-wrap" style={{ width: 36, height: 48, flex: 'none' }}>
+                      {b.cover_url ? <img src={b.cover_url} alt={b.title} /> : <div className="cover-placeholder" style={{ fontSize: 8 }}>cover</div>}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12, opacity: 0.6 }}>{b.nickname}</div>
+                      <div style={{ fontSize: 14, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {b.title} <span style={{ fontWeight: 400, opacity: 0.6 }}>{b.author}</span>
+                      </div>
+                      <div className="progress-row" style={{ marginTop: 4 }}>
+                        <div className="progress-track">
+                          <span className="progress-fill" style={{ width: `${pct}%` }} />
+                        </div>
+                        <span className="progress-label">{pct}%</span>
+                      </div>
+                    </div>
+                    <span className={STATUS_TAG_CLASS[b.status]} style={{ flex: 'none' }}>{STATUS_LABELS[b.status]}</span>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="empty-state small">아직 공유된 독서 현황이 없어요. 개인 책장 → 책 상세에서 이 모임에 현황을 공유해보세요.</div>
           )}
         </div>
-      </div>
 
-      <div>
-        <h4 style={{ marginBottom: 10, fontSize: 15 }}>멤버 독서 현황판</h4>
-        {grp.sharedBooks.length > 0 ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {grp.sharedBooks.map((b) => {
-              const pct = pctOf(b);
-              return (
-                <div key={b.id} className="blueprint" style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div className="cover-wrap" style={{ width: 36, height: 48, flex: 'none' }}>
-                    {b.cover_url ? <img src={b.cover_url} alt={b.title} /> : <div className="cover-placeholder" style={{ fontSize: 8 }}>cover</div>}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 12, opacity: 0.6 }}>{b.nickname}</div>
-                    <div style={{ fontSize: 14, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {b.title} <span style={{ fontWeight: 400, opacity: 0.6 }}>{b.author}</span>
-                    </div>
-                    <div className="progress-row" style={{ marginTop: 4 }}>
-                      <div className="progress-track">
-                        <span className="progress-fill" style={{ width: `${pct}%` }} />
-                      </div>
-                      <span className="progress-label">{pct}%</span>
-                    </div>
-                  </div>
-                  <span className={STATUS_TAG_CLASS[b.status]} style={{ flex: 'none' }}>{STATUS_LABELS[b.status]}</span>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="empty-state small">아직 공유된 독서 현황이 없어요. 개인 책장 → 책 상세에서 이 모임에 현황을 공유해보세요.</div>
-        )}
-      </div>
-
-      <div>
-        <h4 style={{ marginBottom: 10, fontSize: 15 }}>함께 질문</h4>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {grp.questions.map((q) => (
-            <GroupQuestion
-              key={q.id} q={q} onAnswer={(text) => onAnswer(q.id, text)}
-              onEdit={(text) => onUpdateQuestion(q.id, text)}
-              onDelete={() => onDeleteQuestion(q.id)}
-            />
-          ))}
-        </div>
-        <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-          <input className="input" placeholder="새 질문 추가하기" value={newQuestion} onChange={(e) => setNewQuestion(e.target.value)} />
-          <button type="button" className="btn btn-secondary" onClick={submitQuestion} disabled={questionBusy || !newQuestion.trim()}>
-            {questionBusy ? '추가 중...' : '추가'}
-          </button>
-        </div>
-        {questionError && <div className="error-text" style={{ marginTop: 6 }}>{questionError}</div>}
-      </div>
-
-      <div>
-        <h4 style={{ marginBottom: 10, fontSize: 15 }}>함께 미션</h4>
-        <div className="blueprint mission-list">
-          {grp.missions.map((m) => (
-            <GroupMissionRow
-              key={m.id} m={m} memberCount={grp.members.length}
-              onToggle={() => onToggleMission(m.id, m.doneByMe)}
-              onEdit={(text) => onUpdateMission(m.id, text)}
-              onDelete={() => onDeleteMission(m.id)}
-            />
-          ))}
-        </div>
-        <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-          <input className="input" placeholder="새 미션 추가하기" value={newMission} onChange={(e) => setNewMission(e.target.value)} />
-          <button type="button" className="btn btn-secondary" onClick={submitMission} disabled={missionBusy || !newMission.trim()}>
-            {missionBusy ? '추가 중...' : '추가'}
-          </button>
-        </div>
-        {missionError && <div className="error-text" style={{ marginTop: 6 }}>{missionError}</div>}
-      </div>
-
-      <div>
-        <h4 style={{ marginBottom: 10, fontSize: 15 }}>멤버들이 공유한 기록</h4>
-        {grp.sharedRecords.length > 0 ? (
-          <div className="record-grid">
-            {grp.sharedRecords.map((r) => (
-              <div className="blueprint record-card" key={r.id}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                  <span className={r.type === 'quote' ? 'tag tag-outline' : 'tag tag-accent'}>{r.type === 'quote' ? '인용구' : '인사이트'}</span>
-                  <span style={{ fontSize: 12, opacity: 0.6 }}>{r.nickname} · {r.book_title}</span>
-                </div>
-                <p style={{ margin: 0, fontSize: 14, lineHeight: 1.55 }}>{r.text}</p>
-                <div className="timestamp">{fmtDate(r.created_at)}</div>
-              </div>
+        <div>
+          <h4 style={{ marginBottom: 10, fontSize: 15 }}>함께 질문</h4>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {grp.questions.map((q) => (
+              <GroupQuestion
+                key={q.id} q={q} onAnswer={(text) => onAnswer(q.id, text)}
+                onEdit={(text) => onUpdateQuestion(q.id, text)}
+                onDelete={() => onDeleteQuestion(q.id)}
+              />
             ))}
           </div>
-        ) : (
-          <div className="empty-state small">아직 공유된 기록이 없어요. 개인 책장의 기록 카드에서 이 모임에 공유해보세요.</div>
-        )}
-      </div>
-
-      <div>
-        <h4 style={{ marginBottom: 10, fontSize: 15 }}>멤버들의 AI 질문 노트</h4>
-        {grp.sharedQuestions.length > 0 ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {grp.sharedQuestions.map((q) => (
-              <SharedQuestion key={q.id} q={q} onAnswer={(text) => onAnswerSharedQuestion(q.id, text)} />
-            ))}
+          <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+            <input className="input" placeholder="새 질문 추가하기" value={newQuestion} onChange={(e) => setNewQuestion(e.target.value)} />
+            <button type="button" className="btn btn-secondary" onClick={submitQuestion} disabled={questionBusy || !newQuestion.trim()}>
+              {questionBusy ? '추가 중...' : '추가'}
+            </button>
           </div>
-        ) : (
-          <div className="empty-state small">아직 공유된 질문 노트가 없어요.</div>
-        )}
-      </div>
+          {questionError && <div className="error-text" style={{ marginTop: 6 }}>{questionError}</div>}
+        </div>
 
-      <div>
-        <h4 style={{ marginBottom: 10, fontSize: 15 }}>멤버들의 AI 미션</h4>
-        {grp.sharedMissions.length > 0 ? (
+        <div>
+          <h4 style={{ marginBottom: 10, fontSize: 15 }}>함께 미션</h4>
           <div className="blueprint mission-list">
-            {grp.sharedMissions.map((m) => (
-              <div className="mission-row" key={m.id}>
-                <span style={{ fontSize: 16, flex: 'none' }}>{m.done ? '✅' : '⬜'}</span>
-                <span className="mission-text">{m.text}</span>
-                <span style={{ fontSize: 11, color: 'var(--color-neutral-600)' }}>{m.nickname}</span>
-              </div>
+            {grp.missions.map((m) => (
+              <GroupMissionRow
+                key={m.id} m={m} memberCount={grp.members.length}
+                onToggle={() => onToggleMission(m.id, m.doneByMe)}
+                onEdit={(text) => onUpdateMission(m.id, text)}
+                onDelete={() => onDeleteMission(m.id)}
+              />
             ))}
           </div>
-        ) : (
-          <div className="empty-state small">아직 공유된 미션이 없어요.</div>
-        )}
+          <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+            <input className="input" placeholder="새 미션 추가하기" value={newMission} onChange={(e) => setNewMission(e.target.value)} />
+            <button type="button" className="btn btn-secondary" onClick={submitMission} disabled={missionBusy || !newMission.trim()}>
+              {missionBusy ? '추가 중...' : '추가'}
+            </button>
+          </div>
+          {missionError && <div className="error-text" style={{ marginTop: 6 }}>{missionError}</div>}
+        </div>
+
+        <div>
+          <h4 style={{ marginBottom: 10, fontSize: 15 }}>멤버들이 공유한 기록</h4>
+          {grp.sharedRecords.length > 0 ? (
+            <div className="record-grid">
+              {grp.sharedRecords.map((r) => (
+                <div className="blueprint record-card" key={r.id}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                    <span className={r.type === 'quote' ? 'tag tag-outline' : 'tag tag-accent'}>{r.type === 'quote' ? '인용구' : '인사이트'}</span>
+                    <span style={{ fontSize: 12, opacity: 0.6 }}>{r.nickname} · {r.book_title}</span>
+                  </div>
+                  <p style={{ margin: 0, fontSize: 14, lineHeight: 1.55 }}>{r.text}</p>
+                  <div className="timestamp">{fmtDate(r.created_at)}</div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="empty-state small">아직 공유된 기록이 없어요. 개인 책장의 기록 카드에서 이 모임에 공유해보세요.</div>
+          )}
+        </div>
+
+        <div>
+          <h4 style={{ marginBottom: 10, fontSize: 15 }}>멤버들의 AI 질문 노트</h4>
+          {grp.sharedQuestions.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {grp.sharedQuestions.map((q) => (
+                <SharedQuestion key={q.id} q={q} onAnswer={(text) => onAnswerSharedQuestion(q.id, text)} />
+              ))}
+            </div>
+          ) : (
+            <div className="empty-state small">아직 공유된 질문 노트가 없어요.</div>
+          )}
+        </div>
+
+        <div>
+          <h4 style={{ marginBottom: 10, fontSize: 15 }}>멤버들의 AI 미션</h4>
+          {grp.sharedMissions.length > 0 ? (
+            <div className="blueprint mission-list">
+              {grp.sharedMissions.map((m) => (
+                <div className="mission-row" key={m.id}>
+                  <span style={{ fontSize: 16, flex: 'none' }}>{m.done ? '✅' : '⬜'}</span>
+                  <span className="mission-text">{m.text}</span>
+                  <span style={{ fontSize: 11, color: 'var(--color-neutral-600)' }}>{m.nickname}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="empty-state small">아직 공유된 미션이 없어요.</div>
+          )}
+        </div>
       </div>
 
       {showEditGroup && (
