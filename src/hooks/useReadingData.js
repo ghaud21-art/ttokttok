@@ -126,7 +126,8 @@ export function useReadingData(userId) {
     if (error) throw error;
     const delta = page - book.current_page;
     if (delta > 0) {
-      await supabase.from('ddok_page_logs').insert({ book_id: book.id, owner_id: userId, pages_delta: delta });
+      const { error: logError } = await supabase.from('ddok_page_logs').insert({ book_id: book.id, owner_id: userId, pages_delta: delta });
+      if (logError) console.warn('[page log] insert failed (연간기록 페이지 집계에는 반영되지 않아요):', logError.message);
     }
     await reload();
   }, [userId, reload]);
