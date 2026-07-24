@@ -54,7 +54,7 @@ export function useReadingData(userId) {
       cover_url: book.coverUrl || '',
       rating: book.rating || null,
       started_at: book.status === 'want' ? null : (book.startedAt || new Date().toISOString()),
-      finished_at: book.status === 'done' ? new Date().toISOString() : null,
+      finished_at: book.status === 'done' ? (book.finishedAt || new Date().toISOString()) : null,
     };
     const { error } = await supabase.from('ddok_books').insert(row);
     if (error) throw error;
@@ -68,7 +68,7 @@ export function useReadingData(userId) {
     let finished_at = existing?.finished_at || null;
     if (book.status === 'done') {
       current_page = total;
-      finished_at = finished_at || new Date().toISOString();
+      finished_at = book.finishedAt || finished_at || new Date().toISOString();
     } else {
       finished_at = null;
     }

@@ -116,7 +116,11 @@ function GroupCard({
   onUpdateGroup, onDeleteGroup, onAnswerSharedQuestion,
 }) {
   const [newQuestion, setNewQuestion] = useState('');
+  const [questionBusy, setQuestionBusy] = useState(false);
+  const [questionError, setQuestionError] = useState('');
   const [newMission, setNewMission] = useState('');
+  const [missionBusy, setMissionBusy] = useState(false);
+  const [missionError, setMissionError] = useState('');
   const [showEditGroup, setShowEditGroup] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const isOwner = grp.owner_id === userId;
@@ -128,6 +132,34 @@ function GroupCard({
       await onDeleteGroup();
     } finally {
       setDeleteBusy(false);
+    }
+  };
+
+  const submitQuestion = async () => {
+    if (!newQuestion.trim()) return;
+    setQuestionBusy(true);
+    setQuestionError('');
+    try {
+      await onAddQuestion(newQuestion);
+      setNewQuestion('');
+    } catch (err) {
+      setQuestionError(err.message || '질문 등록에 실패했어요.');
+    } finally {
+      setQuestionBusy(false);
+    }
+  };
+
+  const submitMission = async () => {
+    if (!newMission.trim()) return;
+    setMissionBusy(true);
+    setMissionError('');
+    try {
+      await onAddMission(newMission);
+      setNewMission('');
+    } catch (err) {
+      setMissionError(err.message || '미션 등록에 실패했어요.');
+    } finally {
+      setMissionBusy(false);
     }
   };
 
@@ -204,13 +236,11 @@ function GroupCard({
         </div>
         <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
           <input className="input" placeholder="새 질문 추가하기" value={newQuestion} onChange={(e) => setNewQuestion(e.target.value)} />
-          <button
-            type="button" className="btn btn-secondary"
-            onClick={() => { if (newQuestion.trim()) { onAddQuestion(newQuestion); setNewQuestion(''); } }}
-          >
-            추가
+          <button type="button" className="btn btn-secondary" onClick={submitQuestion} disabled={questionBusy || !newQuestion.trim()}>
+            {questionBusy ? '추가 중...' : '추가'}
           </button>
         </div>
+        {questionError && <div className="error-text" style={{ marginTop: 6 }}>{questionError}</div>}
       </div>
 
       <div>
@@ -227,13 +257,11 @@ function GroupCard({
         </div>
         <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
           <input className="input" placeholder="새 미션 추가하기" value={newMission} onChange={(e) => setNewMission(e.target.value)} />
-          <button
-            type="button" className="btn btn-secondary"
-            onClick={() => { if (newMission.trim()) { onAddMission(newMission); setNewMission(''); } }}
-          >
-            추가
+          <button type="button" className="btn btn-secondary" onClick={submitMission} disabled={missionBusy || !newMission.trim()}>
+            {missionBusy ? '추가 중...' : '추가'}
           </button>
         </div>
+        {missionError && <div className="error-text" style={{ marginTop: 6 }}>{missionError}</div>}
       </div>
 
       <div>

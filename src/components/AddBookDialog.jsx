@@ -18,6 +18,7 @@ export default function AddBookDialog({ userId, book, onClose, onSubmit }) {
   const [totalPages, setTotalPages] = useState(book?.total_pages ? String(book.total_pages) : '');
   const [status, setStatus] = useState(book?.status || 'reading');
   const [startedAt, setStartedAt] = useState(book?.started_at ? book.started_at.slice(0, 10) : today());
+  const [finishedAt, setFinishedAt] = useState(book?.finished_at ? book.finished_at.slice(0, 10) : today());
   const [rating, setRating] = useState(book?.rating || null);
   const [coverFile, setCoverFile] = useState(null);
   const [coverPreview, setCoverPreview] = useState('');
@@ -42,7 +43,12 @@ export default function AddBookDialog({ userId, book, onClose, onSubmit }) {
       if (coverFile) {
         finalCoverUrl = await uploadCoverImage(coverFile, userId);
       }
-      await onSubmit({ title, author, genre, totalPages, status, coverUrl: finalCoverUrl, startedAt: status === 'want' ? '' : startedAt, rating });
+      await onSubmit({
+        title, author, genre, totalPages, status, coverUrl: finalCoverUrl,
+        startedAt: status === 'want' ? '' : startedAt,
+        finishedAt: status === 'done' ? finishedAt : '',
+        rating,
+      });
     } catch (err) {
       setError(err.message || '등록 중 문제가 발생했어요.');
     } finally {
@@ -87,6 +93,12 @@ export default function AddBookDialog({ userId, book, onClose, onSubmit }) {
           <div className="field">
             <label>읽기 시작일</label>
             <input className="input" type="date" value={startedAt} onChange={(e) => setStartedAt(e.target.value)} />
+          </div>
+        )}
+        {status === 'done' && (
+          <div className="field">
+            <label>완독일</label>
+            <input className="input" type="date" value={finishedAt} onChange={(e) => setFinishedAt(e.target.value)} />
           </div>
         )}
         <div className="field">
