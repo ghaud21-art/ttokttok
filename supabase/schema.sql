@@ -64,6 +64,7 @@ create table if not exists public.ddok_books (
   current_page int not null default 0,
   status text not null default 'reading' check (status in ('reading', 'done', 'want')),
   cover_url text default '',
+  started_at timestamptz,
   finished_at timestamptz,
   created_at timestamptz not null default now()
 );

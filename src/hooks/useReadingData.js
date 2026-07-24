@@ -52,6 +52,7 @@ export function useReadingData(userId) {
       current_page: book.status === 'done' ? total : 0,
       status: book.status,
       cover_url: book.coverUrl || '',
+      started_at: book.status === 'want' ? null : (book.startedAt || new Date().toISOString()),
       finished_at: book.status === 'done' ? new Date().toISOString() : null,
     };
     const { error } = await supabase.from('ddok_books').insert(row);
@@ -70,6 +71,7 @@ export function useReadingData(userId) {
     } else {
       finished_at = null;
     }
+    const started_at = book.status === 'want' ? null : (book.startedAt || existing?.started_at || new Date().toISOString());
     const row = {
       title: book.title.trim(),
       author: (book.author || '').trim(),
@@ -78,6 +80,7 @@ export function useReadingData(userId) {
       current_page,
       status: book.status,
       cover_url: book.coverUrl || '',
+      started_at,
       finished_at,
     };
     const { error } = await supabase.from('ddok_books').update(row).eq('id', bookId);
@@ -97,14 +100,17 @@ export function useReadingData(userId) {
     if (book.total_pages > 0 && page > book.total_pages) page = book.total_pages;
     let status = book.status;
     let finished_at = book.finished_at;
+    let started_at = book.started_at;
     if (book.total_pages > 0 && page >= book.total_pages) {
       status = 'done';
       finished_at = finished_at || new Date().toISOString();
+      started_at = started_at || new Date().toISOString();
     } else if (page > 0 && status === 'want') {
       status = 'reading';
+      started_at = started_at || new Date().toISOString();
     }
     const { error } = await supabase.from('ddok_books')
-      .update({ current_page: page, status, finished_at })
+      .update({ current_page: page, status, finished_at, started_at })
       .eq('id', book.id);
     if (error) throw error;
     await reload();

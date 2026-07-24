@@ -110,6 +110,12 @@ export default function BookDetailPage({
               <ShareControl groups={myGroups} value={book.shared_group_ids} onChange={(groupIds) => onShareBook(book.id, groupIds)} />
             )}
           </div>
+          {(book.started_at || book.finished_at) && (
+            <div style={{ fontSize: 12, opacity: 0.6, display: 'flex', gap: 12 }}>
+              {book.started_at && <span>시작일 {fmtDate(book.started_at)}</span>}
+              {book.finished_at && <span>완독일 {fmtDate(book.finished_at)}</span>}
+            </div>
+          )}
           <div style={{ flex: 1, minWidth: 220, display: 'flex', flexDirection: 'column', gap: 6 }}>
             <label style={{ fontSize: 12, opacity: 0.65 }}>현재 {book.current_page} / {book.total_pages} 페이지 · {pct}%</label>
             <div className="progress-track">

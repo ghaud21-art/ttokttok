@@ -40,12 +40,22 @@ export default function CalendarView({ records, books, onOpenBook }) {
     [books, year, month]
   );
 
+  const startedThisMonth = useMemo(
+    () => books.filter((b) => {
+      if (!b.started_at) return false;
+      const d = new Date(b.started_at);
+      return d.getFullYear() === year && d.getMonth() === month;
+    }),
+    [books, year, month]
+  );
+
   const bookIdsInMonth = useMemo(() => {
     const ids = [];
     monthRecords.forEach((r) => { if (!ids.includes(r.book_id)) ids.push(r.book_id); });
     finishedThisMonth.forEach((b) => { if (!ids.includes(b.id)) ids.push(b.id); });
+    startedThisMonth.forEach((b) => { if (!ids.includes(b.id)) ids.push(b.id); });
     return ids;
-  }, [monthRecords, finishedThisMonth]);
+  }, [monthRecords, finishedThisMonth, startedThisMonth]);
 
   const colorForBook = (bookId) => DOT_COLORS[bookIdsInMonth.indexOf(bookId) % DOT_COLORS.length];
 
@@ -61,8 +71,13 @@ export default function CalendarView({ records, books, onOpenBook }) {
       if (!map[day]) map[day] = [];
       if (!map[day].includes(b.id)) map[day].push(b.id);
     });
+    startedThisMonth.forEach((b) => {
+      const day = new Date(b.started_at).getDate();
+      if (!map[day]) map[day] = [];
+      if (!map[day].includes(b.id)) map[day].push(b.id);
+    });
     return map;
-  }, [monthRecords, finishedThisMonth]);
+  }, [monthRecords, finishedThisMonth, startedThisMonth]);
 
   const { tier, tierLabel } = tierForCount(monthRecords.length);
 
@@ -80,7 +95,8 @@ export default function CalendarView({ records, books, onOpenBook }) {
     const book = books.find((b) => b.id === id);
     const count = monthRecords.filter((r) => r.book_id === id).length;
     const finished = finishedThisMonth.some((b) => b.id === id);
-    return { id, title: titleById[id] || book?.title || '(삭제된 책)', count, finished, color: colorForBook(id) };
+    const started = startedThisMonth.some((b) => b.id === id);
+    return { id, title: titleById[id] || book?.title || '(삭제된 책)', count, finished, started, color: colorForBook(id) };
   });
 
   return (
@@ -148,6 +164,7 @@ export default function CalendarView({ records, books, onOpenBook }) {
             >
               <span style={{ width: 9, height: 9, borderRadius: '50%', background: b.color, flex: 'none' }} />
               <span style={{ flex: 1, fontSize: 14 }}>{b.title}</span>
+              {b.started && <span className="tag tag-accent">시작</span>}
               {b.finished && <span className="tag tag-neutral">완독</span>}
               <span style={{ fontSize: 12, opacity: 0.55 }}>기록 {b.count}건</span>
             </div>
