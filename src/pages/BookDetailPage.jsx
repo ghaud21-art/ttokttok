@@ -232,7 +232,7 @@ export default function BookDetailPage({
           <div className="empty-state small">조건에 맞는 기록이 없어요.</div>
         ) : (
           <>
-            <div className="record-grid">
+            <div className="record-grid record-grid-scroll">
               {visibleRecords.map((r) => (
                 <RecordCard
                   key={r.id} record={r} onDelete={onDeleteRecord} onTagClick={onOpenTag}
