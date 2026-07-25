@@ -20,6 +20,7 @@ create table if not exists public.ddok_profiles (
   is_admin boolean not null default false,
   ai_uses_count int not null default 0,
   ai_unlimited boolean not null default false,
+  avatar_url text not null default '',
   created_at timestamptz not null default now()
 );
 

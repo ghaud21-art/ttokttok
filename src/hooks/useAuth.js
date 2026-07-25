@@ -11,7 +11,7 @@ export function useAuth() {
       setProfile(null);
       return;
     }
-    const { data } = await supabase.from('ddok_profiles').select('id, nickname, is_admin, ai_uses_count, ai_unlimited').eq('id', userId).maybeSingle();
+    const { data } = await supabase.from('ddok_profiles').select('id, nickname, is_admin, ai_uses_count, ai_unlimited, avatar_url').eq('id', userId).maybeSingle();
     setProfile(data || null);
   }, []);
 
@@ -59,6 +59,13 @@ export function useAuth() {
     await loadProfile(session.user.id);
   }, [session, loadProfile]);
 
+  const updateAvatar = useCallback(async (avatarUrl) => {
+    if (!session?.user?.id) return;
+    const { error } = await supabase.from('ddok_profiles').update({ avatar_url: avatarUrl }).eq('id', session.user.id);
+    if (error) throw error;
+    await loadProfile(session.user.id);
+  }, [session, loadProfile]);
+
   const reloadProfile = useCallback(() => loadProfile(session?.user?.id), [session, loadProfile]);
 
   return {
@@ -70,6 +77,7 @@ export function useAuth() {
     signIn,
     signOut,
     updateNickname,
+    updateAvatar,
     reloadProfile,
   };
 }

@@ -12,6 +12,7 @@ const STATUS_FILTERS = [
 export default function ShelfPage({ books, onOpenBook }) {
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterGenre, setFilterGenre] = useState(null);
+  const [search, setSearch] = useState('');
 
   const now = new Date();
   const thisMonthCount = books.filter((b) => b.finished_at && sameMonth(new Date(b.finished_at), now)).length;
@@ -20,8 +21,10 @@ export default function ShelfPage({ books, onOpenBook }) {
 
   const genres = useMemo(() => Array.from(new Set(books.map((b) => b.genre))).sort(), [books]);
 
+  const q = search.trim().toLowerCase();
   const filteredBooks = books
     .filter((b) => (filterStatus === 'all' || b.status === filterStatus) && (!filterGenre || b.genre === filterGenre))
+    .filter((b) => !q || b.title.toLowerCase().includes(q) || (b.author || '').toLowerCase().includes(q))
     .slice()
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
@@ -63,6 +66,12 @@ export default function ShelfPage({ books, onOpenBook }) {
             </span>
           ))}
         </div>
+        <input
+          className="input" style={{ maxWidth: 220, marginLeft: 'auto' }}
+          placeholder="제목·저자 검색"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
       </div>
 
       {filteredBooks.length > 0 ? (

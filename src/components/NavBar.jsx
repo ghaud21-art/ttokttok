@@ -3,6 +3,7 @@ const LINKS = [
   { key: 'together', label: '함께읽기' },
   { key: 'tags', label: '기록 모아보기' },
   { key: 'missions', label: '실천 기록' },
+  { key: 'mypage', label: '마이페이지' },
 ];
 
 export default function NavBar({ screen, nickname, isAdmin, onNavigate, onOpenAddDialog, onLogout }) {

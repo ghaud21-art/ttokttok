@@ -10,15 +10,13 @@ import MissionList from '../components/MissionList.jsx';
 import AddBookDialog from '../components/AddBookDialog.jsx';
 import ShareControl from '../components/ShareControl.jsx';
 import StarRating from '../components/StarRating.jsx';
+import { FREE_USES, KAKAO_LINK } from '../lib/constants.js';
 
 const SPARKLE = (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
     <path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M18.4 5.6l-2.8 2.8M8.4 15.6l-2.8 2.8" />
   </svg>
 );
-
-const FREE_USES = 3;
-const KAKAO_LINK = 'https://open.kakao.com/me/dalpjh';
 
 function AiBlockedNotice({ code }) {
   return (

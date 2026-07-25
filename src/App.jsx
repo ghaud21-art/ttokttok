@@ -9,11 +9,12 @@ import RecordsPage from './pages/RecordsPage.jsx';
 import MissionsArchivePage from './pages/MissionsArchivePage.jsx';
 import TogetherPage from './pages/TogetherPage.jsx';
 import AdminPage from './pages/AdminPage.jsx';
+import MyPage from './pages/MyPage.jsx';
 import NavBar from './components/NavBar.jsx';
 import AddBookDialog from './components/AddBookDialog.jsx';
 
 export default function App() {
-  const { user, profile, loading, signIn, signUp, signOut, reloadProfile } = useAuth();
+  const { user, profile, loading, signIn, signUp, signOut, updateNickname, updateAvatar, reloadProfile } = useAuth();
 
   if (!isSupabaseConfigured) {
     return (
@@ -38,11 +39,14 @@ export default function App() {
   }
 
   return (
-    <AppShell user={user} profile={profile} onLogout={signOut} onProfileChanged={reloadProfile} />
+    <AppShell
+      user={user} profile={profile} onLogout={signOut} onProfileChanged={reloadProfile}
+      onUpdateNickname={updateNickname} onUpdateAvatar={updateAvatar}
+    />
   );
 }
 
-function AppShell({ user, profile, onLogout, onProfileChanged }) {
+function AppShell({ user, profile, onLogout, onProfileChanged, onUpdateNickname, onUpdateAvatar }) {
   const [screen, setScreen] = useState('shelf');
   const [activeBookId, setActiveBookId] = useState(null);
   const [activeTag, setActiveTag] = useState(null);
@@ -50,7 +54,7 @@ function AppShell({ user, profile, onLogout, onProfileChanged }) {
 
   const {
     books, records, questions, missions, pageLogs,
-    addBook, updateBook, updateRating, deleteBook, setBookProgress, addRecord, deleteRecord,
+    addBook, addBooksBulk, updateBook, updateRating, deleteBook, setBookProgress, addRecord, deleteRecord,
     saveQuestionAnswer, updateQuestion, deleteQuestion, addMissions, toggleMission,
     shareRecord, shareQuestion, shareMission, shareBook,
   } = useReadingData(user.id);
@@ -119,6 +123,13 @@ function AppShell({ user, profile, onLogout, onProfileChanged }) {
 
         {screen === 'missions' && (
           <MissionsArchivePage missions={missions} books={books} onOpenBook={openBook} onToggle={toggleMission} />
+        )}
+
+        {screen === 'mypage' && (
+          <MyPage
+            userId={user.id} profile={profile} books={books}
+            onUpdateNickname={onUpdateNickname} onUpdateAvatar={onUpdateAvatar} onImportBooks={addBooksBulk}
+          />
         )}
 
         {screen === 'admin' && isAdmin && <AdminPage />}

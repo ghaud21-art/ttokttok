@@ -93,6 +93,36 @@ export function useReadingData(userId) {
     await reload();
   }, [books, reload]);
 
+  const addBooksBulk = useCallback(async (rows) => {
+    const existingKeys = new Set(books.map((b) => `${b.title.trim().toLowerCase()}::${(b.author || '').trim().toLowerCase()}`));
+    let skipped = 0;
+    const toInsert = [];
+    rows.forEach((r) => {
+      const key = `${r.title.trim().toLowerCase()}::${(r.author || '').trim().toLowerCase()}`;
+      if (existingKeys.has(key)) { skipped += 1; return; }
+      existingKeys.add(key);
+      const row = {
+        owner_id: userId,
+        title: r.title.trim(),
+        author: (r.author || '').trim(),
+        genre: r.genre || '미분류',
+        total_pages: 0,
+        current_page: 0,
+        status: r.status,
+        started_at: r.started_at,
+        finished_at: r.finished_at,
+      };
+      if (r.created_at) row.created_at = r.created_at;
+      toInsert.push(row);
+    });
+    if (toInsert.length > 0) {
+      const { error } = await supabase.from('ddok_books').insert(toInsert);
+      if (error) throw error;
+      await reload();
+    }
+    return { inserted: toInsert.length, skipped };
+  }, [userId, books, reload]);
+
   const updateRating = useCallback(async (bookId, rating) => {
     const { error } = await supabase.from('ddok_books').update({ rating }).eq('id', bookId);
     if (error) throw error;
@@ -203,7 +233,7 @@ export function useReadingData(userId) {
 
   return {
     books, records, questions, missions, pageLogs, loading, reload,
-    addBook, updateBook, updateRating, deleteBook, setBookProgress, addRecord, deleteRecord,
+    addBook, addBooksBulk, updateBook, updateRating, deleteBook, setBookProgress, addRecord, deleteRecord,
     saveQuestionAnswer, updateQuestion, deleteQuestion, addMissions, toggleMission,
     shareRecord, shareQuestion, shareMission, shareBook,
   };
