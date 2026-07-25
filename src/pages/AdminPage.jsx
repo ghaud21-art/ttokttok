@@ -46,7 +46,7 @@ export default function AdminPage() {
       ) : users.length === 0 ? (
         <div className="empty-state small">가입자가 없어요.</div>
       ) : (
-        <div style={{ overflowX: 'auto' }}>
+        <div className="blueprint" style={{ overflowX: 'auto' }}>
           <table className="table">
             <thead>
               <tr>
@@ -55,8 +55,7 @@ export default function AdminPage() {
                 <th>가입일</th>
                 <th>최근 로그인</th>
                 <th>책</th>
-                <th>AI 사용</th>
-                <th>상태</th>
+                <th>AI 기능 상태</th>
                 <th></th>
               </tr>
             </thead>
@@ -103,16 +102,25 @@ function UserRow({ u, onSetBan, onDelete }) {
     }
   };
 
+  const aiStatus = u.isAdmin
+    ? { label: '무제한', cls: 'tag-accent' }
+    : u.aiUsesCount >= 3
+      ? { label: '제한 도달 (3/3)', cls: 'tag-danger' }
+      : { label: `${u.aiUsesCount}/3 사용`, cls: 'tag-accent-2' };
+
   return (
     <>
       <tr>
-        <td>{u.nickname || <span style={{ opacity: 0.5 }}>(없음)</span>}{u.isAdmin && <span className="tag tag-accent" style={{ marginLeft: 6 }}>관리자</span>}</td>
+        <td>
+          {u.nickname || <span style={{ opacity: 0.5 }}>(없음)</span>}
+          {u.isAdmin && <span className="tag tag-accent" style={{ marginLeft: 6 }}>관리자</span>}
+          {u.banned && <span className="tag tag-neutral" style={{ marginLeft: 6 }}>정지됨</span>}
+        </td>
         <td>{u.email}</td>
         <td>{fmtDate(u.createdAt)}</td>
         <td>{u.lastSignInAt ? fmtDate(u.lastSignInAt) : '-'}</td>
         <td>{u.bookCount}</td>
-        <td>{u.aiUsesCount}</td>
-        <td>{u.banned ? <span className="tag tag-neutral">정지됨</span> : <span className="tag tag-accent-2">정상</span>}</td>
+        <td><span className={`tag ${aiStatus.cls}`}>{aiStatus.label}</span></td>
         <td>
           {!u.isAdmin && (
             <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
@@ -128,7 +136,7 @@ function UserRow({ u, onSetBan, onDelete }) {
       </tr>
       {confirmingDelete && (
         <tr>
-          <td colSpan={8}>
+          <td colSpan={7}>
             <div className="blueprint" style={{ padding: 12, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               <span style={{ fontSize: 13 }}>
                 이 계정과 모든 데이터를 완전히 삭제해요. 되돌릴 수 없어요. 확인하려면 <b>{target}</b>을(를) 입력하세요.
@@ -149,7 +157,7 @@ function UserRow({ u, onSetBan, onDelete }) {
       )}
       {error && (
         <tr>
-          <td colSpan={8}><div className="error-text" style={{ padding: '4px 0' }}>{error}</div></td>
+          <td colSpan={7}><div className="error-text" style={{ padding: '4px 0' }}>{error}</div></td>
         </tr>
       )}
     </>
