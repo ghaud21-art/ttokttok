@@ -13,8 +13,8 @@ export default function BookCard({ book, onOpen }) {
         )}
       </div>
       <div>
-        <div className="card-title">{book.title}</div>
-        <div style={{ fontSize: 12, opacity: 0.6, marginTop: 2 }}>{book.author}</div>
+        <div className="card-title book-card-title">{book.title}</div>
+        <div className="book-card-author" style={{ fontSize: 12, opacity: 0.6, marginTop: 2 }}>{book.author}</div>
         {book.rating > 0 && <div style={{ marginTop: 4 }}><StarRating value={book.rating} size={13} /></div>}
       </div>
       <div className="tag-list">
