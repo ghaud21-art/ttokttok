@@ -17,6 +17,8 @@ create extension if not exists pgcrypto;
 create table if not exists public.ddok_profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   nickname text not null default '독서가',
+  is_admin boolean not null default false,
+  ai_uses_count int not null default 0,
   created_at timestamptz not null default now()
 );
 
@@ -31,6 +33,45 @@ create policy "ddok users can update their own profile"
   on public.ddok_profiles for update
   to authenticated
   using (id = auth.uid());
+
+-- is_admin / ai_uses_count는 클라이언트가 직접 못 바꾸게 컬럼 단위로 권한을 뺀다.
+-- (행 단위 정책만으로는 "본인 프로필이니 아무 컬럼이나 수정 가능"이 되어버림 —
+-- 그러면 누구나 자기 자신을 관리자로 만들거나 사용 횟수를 조작할 수 있음)
+revoke update (is_admin, ai_uses_count) on public.ddok_profiles from authenticated;
+
+-- 관리자 여부 확인 헬퍼 (다른 정책에서 재사용)
+create or replace function public.ddok_is_admin()
+returns boolean
+language sql
+security definer set search_path = public
+stable
+as $$
+  select coalesce((select is_admin from public.ddok_profiles where id = auth.uid()), false);
+$$;
+
+-- ----------------------------------------------------------------------------
+-- ddok_app_settings : 앱 전역 설정 (싱글턴 1행) — 지금은 AI 기능 on/off만 관리
+-- ----------------------------------------------------------------------------
+create table if not exists public.ddok_app_settings (
+  id boolean primary key default true check (id),
+  ai_enabled boolean not null default true,
+  updated_at timestamptz not null default now()
+);
+
+insert into public.ddok_app_settings (id, ai_enabled) values (true, true)
+  on conflict (id) do nothing;
+
+alter table public.ddok_app_settings enable row level security;
+
+create policy "ddok signed-in users can read app settings"
+  on public.ddok_app_settings for select
+  to authenticated
+  using (true);
+
+create policy "ddok admins can update app settings"
+  on public.ddok_app_settings for update
+  to authenticated
+  using (public.ddok_is_admin());
 
 -- 회원가입 시 자동으로 ddok_profiles 행 생성 (닉네임은 signUp 시 options.data.nickname 으로 전달)
 create or replace function public.ddok_handle_new_user()

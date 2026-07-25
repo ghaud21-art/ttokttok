@@ -17,8 +17,26 @@ const SPARKLE = (
   </svg>
 );
 
+const FREE_USES = 3;
+const KAKAO_LINK = 'https://open.kakao.com/me/dalpjh';
+
+function AiBlockedNotice({ code }) {
+  return (
+    <div className="blueprint" style={{ padding: 14, fontSize: 13, lineHeight: 1.6 }}>
+      {code === 'ai_disabled'
+        ? '지금은 관리자가 AI 기능을 잠시 꺼두었어요.'
+        : '무료로 제공되는 AI 생성 3회를 모두 사용하셨어요.'}{' '}
+      계속 이용하고 싶으시면{' '}
+      <a href={KAKAO_LINK} target="_blank" rel="noreferrer" style={{ textDecoration: 'underline', color: 'var(--color-accent-700)' }}>
+        오픈채팅으로 문의
+      </a>
+      해주세요.
+    </div>
+  );
+}
+
 export default function BookDetailPage({
-  userId, book, records, questions, missions,
+  userId, book, records, questions, missions, profile, onAiUsed,
   onBack, onSetProgress, onAddRecord, onDeleteRecord,
   onSaveQuestion, onUpdateQuestion, onDeleteQuestion, onAddMissions, onToggleMission, onOpenTag, onGoMissionsArchive,
   onUpdateBook, onDeleteBook, onShareRecord, onShareQuestion, onShareMission, onShareBook, onUpdateRating,
@@ -26,11 +44,18 @@ export default function BookDetailPage({
   const [questionDrafts, setQuestionDrafts] = useState([]);
   const [aiBusy, setAiBusy] = useState({ questions: false, missions: false });
   const [aiError, setAiError] = useState('');
+  const [aiBlockedCode, setAiBlockedCode] = useState(null);
+  const [usesCount, setUsesCount] = useState(profile?.ai_uses_count || 0);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const lastGenMissionIds = useRef([]);
   const { groups: myGroups } = useMyGroups(userId);
   const [localPage, setLocalPage] = useState(book.current_page);
+
+  useEffect(() => { setUsesCount(profile?.ai_uses_count || 0); }, [profile?.ai_uses_count]);
+  const isAdmin = !!profile?.is_admin;
+  const limitReached = !isAdmin && usesCount >= FREE_USES;
+  const aiBlocked = aiBlockedCode === 'ai_disabled' || limitReached;
 
   // 슬라이더를 드래그하는 동안 onChange가 여러 번 연속으로 발생하는데, 매번 서버에
   // 커밋하면 페이지 이동량이 중복 집계된다(연간기록 페이지 수 부풀림의 원인이었음).
@@ -50,12 +75,19 @@ export default function BookDetailPage({
 
   const runGenerateQuestions = async () => {
     setAiError('');
+    setAiBlockedCode(null);
     setAiBusy((s) => ({ ...s, questions: true }));
     try {
-      const { questions: qs } = await generateQuestions(book, records);
+      const { questions: qs, usesCount: nextCount } = await generateQuestions(book, records);
+      if (typeof nextCount === 'number') setUsesCount(nextCount);
+      onAiUsed?.();
       setQuestionDrafts((qs || []).slice(0, 5).map((text, i) => ({ id: `${Date.now()}-${i}`, text })));
     } catch (err) {
-      setAiError(err.message || '질문 생성에 실패했어요.');
+      if (err.code === 'limit_reached' || err.code === 'ai_disabled') {
+        setAiBlockedCode(err.code);
+      } else {
+        setAiError(err.message || '질문 생성에 실패했어요.');
+      }
     } finally {
       setAiBusy((s) => ({ ...s, questions: false }));
     }
@@ -63,13 +95,20 @@ export default function BookDetailPage({
 
   const runGenerateMissions = async () => {
     setAiError('');
+    setAiBlockedCode(null);
     setAiBusy((s) => ({ ...s, missions: true }));
     try {
-      const { missions: ms } = await generateMissions(book, records);
+      const { missions: ms, usesCount: nextCount } = await generateMissions(book, records);
+      if (typeof nextCount === 'number') setUsesCount(nextCount);
+      onAiUsed?.();
       const newIds = await onAddMissions(book.id, book.title, (ms || []).slice(0, 5), lastGenMissionIds.current);
       lastGenMissionIds.current = newIds;
     } catch (err) {
-      setAiError(err.message || '미션 생성에 실패했어요.');
+      if (err.code === 'limit_reached' || err.code === 'ai_disabled') {
+        setAiBlockedCode(err.code);
+      } else {
+        setAiError(err.message || '미션 생성에 실패했어요.');
+      }
     } finally {
       setAiBusy((s) => ({ ...s, missions: false }));
     }
@@ -169,11 +208,19 @@ export default function BookDetailPage({
       <div className="section">
         <div className="section-head">
           <h3 style={{ margin: 0 }}>AI 성찰 질문</h3>
-          <button type="button" className="btn btn-secondary" onClick={runGenerateQuestions} disabled={aiBusy.questions}>
-            {SPARKLE}
-            {aiBusy.questions ? '생성 중...' : questionDrafts.length > 0 ? '다시 생성하기' : '질문 생성하기'}
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 12, opacity: 0.55 }}>
+              {isAdmin ? '무제한 (관리자)' : `무료 ${Math.max(0, FREE_USES - usesCount)}/${FREE_USES}회 남음`}
+            </span>
+            {!aiBlocked && (
+              <button type="button" className="btn btn-secondary" onClick={runGenerateQuestions} disabled={aiBusy.questions}>
+                {SPARKLE}
+                {aiBusy.questions ? '생성 중...' : questionDrafts.length > 0 ? '다시 생성하기' : '질문 생성하기'}
+              </button>
+            )}
+          </div>
         </div>
+        {aiBlocked && <div style={{ marginBottom: 14 }}><AiBlockedNotice code={aiBlockedCode || 'limit_reached'} /></div>}
         {aiError && <div className="error-text" style={{ marginBottom: 10 }}>{aiError}</div>}
         {questionDrafts.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -202,11 +249,19 @@ export default function BookDetailPage({
       <div className="section" style={{ marginBottom: 0 }}>
         <div className="section-head">
           <h3 style={{ margin: 0 }}>AI 실천 미션</h3>
-          <button type="button" className="btn btn-secondary" onClick={runGenerateMissions} disabled={aiBusy.missions}>
-            {SPARKLE}
-            {aiBusy.missions ? '생성 중...' : bookMissions.length > 0 ? '미션 다시 생성하기' : '미션 생성하기'}
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 12, opacity: 0.55 }}>
+              {isAdmin ? '무제한 (관리자)' : `무료 ${Math.max(0, FREE_USES - usesCount)}/${FREE_USES}회 남음`}
+            </span>
+            {!aiBlocked && (
+              <button type="button" className="btn btn-secondary" onClick={runGenerateMissions} disabled={aiBusy.missions}>
+                {SPARKLE}
+                {aiBusy.missions ? '생성 중...' : bookMissions.length > 0 ? '미션 다시 생성하기' : '미션 생성하기'}
+              </button>
+            )}
+          </div>
         </div>
+        {aiBlocked && <div style={{ marginBottom: 14 }}><AiBlockedNotice code={aiBlockedCode || 'limit_reached'} /></div>}
         {bookMissions.length > 0 && (
           <MissionList missions={bookMissions} onToggle={onToggleMission} groups={myGroups} onShare={onShareMission} />
         )}

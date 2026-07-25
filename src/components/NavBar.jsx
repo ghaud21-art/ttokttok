@@ -5,7 +5,8 @@ const LINKS = [
   { key: 'missions', label: '실천 기록' },
 ];
 
-export default function NavBar({ screen, nickname, onNavigate, onOpenAddDialog, onLogout }) {
+export default function NavBar({ screen, nickname, isAdmin, onNavigate, onOpenAddDialog, onLogout }) {
+  const links = isAdmin ? [...LINKS, { key: 'admin', label: '관리자' }] : LINKS;
   return (
     <div className="nav">
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, cursor: 'pointer' }} onClick={() => onNavigate('shelf')}>
@@ -13,7 +14,7 @@ export default function NavBar({ screen, nickname, onNavigate, onOpenAddDialog, 
         <span className="brand-sub">우리 사이 똑똑</span>
       </div>
       <div className="nav-links">
-        {LINKS.map((l) => (
+        {links.map((l) => (
           <a
             key={l.key} href="#" aria-current={screen === l.key ? 'page' : undefined}
             onClick={(e) => { e.preventDefault(); onNavigate(l.key); }}

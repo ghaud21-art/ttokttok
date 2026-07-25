@@ -11,7 +11,7 @@ export function useAuth() {
       setProfile(null);
       return;
     }
-    const { data } = await supabase.from('ddok_profiles').select('id, nickname').eq('id', userId).maybeSingle();
+    const { data } = await supabase.from('ddok_profiles').select('id, nickname, is_admin, ai_uses_count').eq('id', userId).maybeSingle();
     setProfile(data || null);
   }, []);
 
@@ -59,6 +59,8 @@ export function useAuth() {
     await loadProfile(session.user.id);
   }, [session, loadProfile]);
 
+  const reloadProfile = useCallback(() => loadProfile(session?.user?.id), [session, loadProfile]);
+
   return {
     session,
     user: session?.user || null,
@@ -68,5 +70,6 @@ export function useAuth() {
     signIn,
     signOut,
     updateNickname,
+    reloadProfile,
   };
 }

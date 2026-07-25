@@ -68,14 +68,28 @@ git push -u origin main
 ## 5. Vercel에 배포하기
 
 1. [vercel.com](https://vercel.com) 로그인 → **Add New → Project** → 방금 push한 GitHub 저장소 선택 → Import
-2. **Environment Variables** 에 아래 3개를 추가 (Production / Preview / Development 모두 체크):
+2. **Environment Variables** 에 아래 4개를 추가 (Production / Preview / Development 모두 체크):
    - `VITE_SUPABASE_URL`
    - `VITE_SUPABASE_ANON_KEY`
    - `GEMINI_API_KEY`
+   - `SUPABASE_SERVICE_ROLE_KEY` (Supabase Project Settings → API → `service_role` — 관리자 기능용, 아래 6번 참고)
 3. **Deploy** 클릭. 프레임워크는 Vite로 자동 인식되고, `api/generate.js`는 자동으로 서버리스 함수로 배포됩니다.
 4. 배포 완료 후 나오는 `https://<프로젝트>.vercel.app` 주소를 친구들에게 공유하면 각자 회원가입해서 쓸 수 있어요.
 
-## 6. 친구들과 함께 쓰는 법
+## 6. 관리자 기능 설정 (가입자 관리 + AI 사용량 제한)
+
+이미 `schema.sql`을 실행해 서비스 중인 프로젝트라면, `supabase/migrations/` 폴더에서 아직 실행하지 않은 마이그레이션을 **번호 순서대로** 전부 실행하세요 (특히 `009_admin_ai_limits.sql`까지). 새로 프로젝트를 만드는 경우엔 `schema.sql` 한 번이면 이미 다 포함되어 있어요.
+
+1. Supabase SQL Editor에서 본인 계정을 관리자로 지정하세요 (이메일을 본인 것으로 바꿔서 실행):
+   ```sql
+   update public.ddok_profiles set is_admin = true
+     where id = (select id from auth.users where email = '본인이메일@example.com');
+   ```
+2. Vercel 환경변수에 `SUPABASE_SERVICE_ROLE_KEY`를 추가하세요 (위 5번 참고). 이 키는 RLS를 완전히 우회하는 매우 민감한 값이라 **절대 `VITE_` 접두사를 붙이지 말고**, 다른 사람과 공유하거나 클라이언트 코드에 넣지 마세요.
+3. 로그인 후 상단 메뉴에 **관리자** 탭이 보이면 설정된 거예요. 여기서 AI 기능 전체 on/off, 가입자 목록 조회, 계정 정지/삭제를 할 수 있어요.
+4. 일반 사용자는 AI 질문/미션 생성을 합쳐서 무료 3회까지 쓸 수 있고, 그 이후엔 화면에 카카오 오픈채팅 문의 링크가 안내돼요. 관리자 계정은 횟수 제한 없이 사용할 수 있어요.
+
+## 7. 친구들과 함께 쓰는 법
 
 - 각자 이메일 + 비밀번호로 회원가입 → 개인 서재(책장)는 본인만 볼 수 있어요.
 - 상단 **함께읽기** 탭에서 모임을 만들면 6자리 초대코드가 생성됩니다.
@@ -103,3 +117,4 @@ src/
 - **표지 이미지 업로드가 실패해요** → Supabase 대시보드 **Storage**에 `ddok-covers` 버킷이 생성되어 있는지 확인하세요 (schema.sql에 포함되어 있어 보통 자동 생성됩니다).
 - **AI 질문/미션이 항상 똑같은 예시 문장만 나와요** → `GEMINI_API_KEY`가 `.env.local`(로컬) 또는 Vercel 환경변수(배포)에 제대로 들어가 있는지, 로컬이라면 `vercel dev`로 실행했는지 확인하세요. 키가 없거나 호출이 실패하면 앱이 자동으로 예시 질문/미션으로 대체합니다(빈 화면 방지용 폴백).
 - **회원가입 후 로그인이 안 돼요** → Supabase Authentication 설정에서 이메일 확인(Confirm email)이 켜져 있으면 메일함에서 인증 링크를 눌러야 합니다.
+- **관리자 메뉴가 안 보여요 / 관리자 화면에서 계속 오류가 나요** → `009_admin_ai_limits.sql` 마이그레이션을 실행했는지, 본인 계정에 `is_admin = true`를 설정했는지, Vercel 환경변수에 `SUPABASE_SERVICE_ROLE_KEY`를 넣었는지 확인하세요. 로컬에서 테스트 중이라면 `npm run dev`가 아니라 `npx vercel dev`로 실행해야 관리자 API(`/api/admin/*`)가 동작합니다.

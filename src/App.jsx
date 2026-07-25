@@ -8,11 +8,12 @@ import BookDetailPage from './pages/BookDetailPage.jsx';
 import RecordsPage from './pages/RecordsPage.jsx';
 import MissionsArchivePage from './pages/MissionsArchivePage.jsx';
 import TogetherPage from './pages/TogetherPage.jsx';
+import AdminPage from './pages/AdminPage.jsx';
 import NavBar from './components/NavBar.jsx';
 import AddBookDialog from './components/AddBookDialog.jsx';
 
 export default function App() {
-  const { user, profile, loading, signIn, signUp, signOut } = useAuth();
+  const { user, profile, loading, signIn, signUp, signOut, reloadProfile } = useAuth();
 
   if (!isSupabaseConfigured) {
     return (
@@ -37,11 +38,11 @@ export default function App() {
   }
 
   return (
-    <AppShell user={user} profile={profile} onLogout={signOut} />
+    <AppShell user={user} profile={profile} onLogout={signOut} onProfileChanged={reloadProfile} />
   );
 }
 
-function AppShell({ user, profile, onLogout }) {
+function AppShell({ user, profile, onLogout, onProfileChanged }) {
   const [screen, setScreen] = useState('shelf');
   const [activeBookId, setActiveBookId] = useState(null);
   const [activeTag, setActiveTag] = useState(null);
@@ -55,6 +56,7 @@ function AppShell({ user, profile, onLogout }) {
   } = useReadingData(user.id);
 
   const nickname = profile?.nickname || user.email?.split('@')[0] || '독서가';
+  const isAdmin = !!profile?.is_admin;
 
   const openBook = (id) => { setActiveBookId(id); setScreen('detail'); };
   const openTag = (tag) => { setActiveTag(tag || null); setScreen('tags'); };
@@ -67,6 +69,7 @@ function AppShell({ user, profile, onLogout }) {
       <NavBar
         screen={screen}
         nickname={nickname}
+        isAdmin={isAdmin}
         onNavigate={navigate}
         onOpenAddDialog={() => setShowAddDialog(true)}
         onLogout={onLogout}
@@ -83,6 +86,8 @@ function AppShell({ user, profile, onLogout }) {
             records={records}
             questions={questions}
             missions={missions}
+            profile={profile}
+            onAiUsed={onProfileChanged}
             onBack={() => setScreen('shelf')}
             onSetProgress={setBookProgress}
             onAddRecord={addRecord}
@@ -115,6 +120,8 @@ function AppShell({ user, profile, onLogout }) {
         {screen === 'missions' && (
           <MissionsArchivePage missions={missions} books={books} onOpenBook={openBook} onToggle={toggleMission} />
         )}
+
+        {screen === 'admin' && isAdmin && <AdminPage />}
       </div>
 
       {showAddDialog && (

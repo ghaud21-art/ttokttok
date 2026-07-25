@@ -1,7 +1,9 @@
 // Vercel Serverless Function — Gemini API 프록시.
 // GEMINI_API_KEY는 여기(서버)에서만 사용되고 클라이언트로 절대 전달되지 않는다.
+import { getAuthedUser, getSupabaseAdmin } from './_lib/adminAuth.js';
 
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+const FREE_USES = 3;
 
 function questionsPrompt(bookTitle, bookAuthor, context) {
   return `당신은 독서 성찰을 돕는 코치입니다. 아래는 "${bookTitle}"(${bookAuthor || '저자 미상'}) 책을 읽으며 독자가 기록한 인용구와 인사이트입니다.
@@ -92,29 +94,59 @@ export default async function handler(req, res) {
     return;
   }
 
+  const user = await getAuthedUser(req);
+  if (!user) {
+    res.status(401).json({ error: 'unauthenticated' });
+    return;
+  }
+
+  const supabaseAdmin = getSupabaseAdmin();
+  const [{ data: settings }, { data: profile }] = await Promise.all([
+    supabaseAdmin.from('ddok_app_settings').select('ai_enabled').eq('id', true).maybeSingle(),
+    supabaseAdmin.from('ddok_profiles').select('is_admin, ai_uses_count').eq('id', user.id).maybeSingle(),
+  ]);
+
+  const isAdmin = !!profile?.is_admin;
+  const aiEnabled = settings ? settings.ai_enabled !== false : true;
+  const usesCount = profile?.ai_uses_count || 0;
+
+  if (!isAdmin && !aiEnabled) {
+    res.status(403).json({ error: 'ai_disabled' });
+    return;
+  }
+  if (!isAdmin && usesCount >= FREE_USES) {
+    res.status(403).json({ error: 'limit_reached', usesCount, freeUses: FREE_USES });
+    return;
+  }
+
   const prompt = type === 'questions'
     ? questionsPrompt(bookTitle, bookAuthor, context)
     : missionsPrompt(bookTitle, bookAuthor, context);
 
+  let result;
   try {
     const parsed = await callGemini(prompt);
     if (type === 'questions') {
       const questions = Array.isArray(parsed.questions) ? parsed.questions.slice(0, 5) : null;
       if (!questions || questions.length === 0) throw new Error('empty questions');
-      res.status(200).json({ questions });
+      result = { questions };
     } else {
       const missions = Array.isArray(parsed.missions)
         ? parsed.missions.slice(0, 5).map((m) => String(m).slice(0, 50))
         : null;
       if (!missions || missions.length === 0) throw new Error('empty missions');
-      res.status(200).json({ missions });
+      result = { missions };
     }
   } catch (err) {
     console.error('[api/generate] falling back:', err.message);
-    if (type === 'questions') {
-      res.status(200).json({ questions: FALLBACK_QUESTIONS(bookTitle) });
-    } else {
-      res.status(200).json({ missions: FALLBACK_MISSIONS });
-    }
+    result = type === 'questions'
+      ? { questions: FALLBACK_QUESTIONS(bookTitle) }
+      : { missions: FALLBACK_MISSIONS };
   }
+
+  if (!isAdmin) {
+    await supabaseAdmin.from('ddok_profiles').update({ ai_uses_count: usesCount + 1 }).eq('id', user.id);
+  }
+
+  res.status(200).json({ ...result, isAdmin, usesCount: isAdmin ? usesCount : usesCount + 1, freeUses: FREE_USES });
 }
