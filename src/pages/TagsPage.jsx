@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import RecordCard from '../components/RecordCard.jsx';
+import { matchesSearch } from '../lib/format.js';
 
 export default function TagsPage({ records, books, onOpenBook, activeTag, onSelectTag, noHeading }) {
   const [search, setSearch] = useState('');
@@ -21,13 +22,13 @@ export default function TagsPage({ records, books, onOpenBook, activeTag, onSele
     return Object.entries(counts).sort((a, b) => b[1] - a[1]);
   }, [records]);
 
-  const q = search.trim().toLowerCase();
+  const q = search.trim();
   const searchResults = q
     ? recordsWithBook
         .filter((r) =>
-          r.text.toLowerCase().includes(q) ||
-          r.bookTitle.toLowerCase().includes(q) ||
-          (r.tags || []).some((t) => t.toLowerCase().includes(q))
+          matchesSearch(r.text, q) ||
+          matchesSearch(r.bookTitle, q) ||
+          (r.tags || []).some((t) => matchesSearch(t, q))
         )
         .slice()
         .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))

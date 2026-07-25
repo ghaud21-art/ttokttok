@@ -17,6 +17,16 @@ export function fmtDate(ts) {
   return new Date(ts).toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
+function normalizeForSearch(s) {
+  return (s || '').toLowerCase().replace(/\s+/g, '');
+}
+
+export function matchesSearch(text, query) {
+  const q = normalizeForSearch(query);
+  if (!q) return true;
+  return normalizeForSearch(text).includes(q);
+}
+
 export function parseTags(text) {
   return Array.from(
     new Set(

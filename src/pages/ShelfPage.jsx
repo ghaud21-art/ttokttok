@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import BookCard from '../components/BookCard.jsx';
 import GenreBar from '../components/GenreBar.jsx';
+import { matchesSearch } from '../lib/format.js';
 
 const STATUS_FILTERS = [
   { key: 'all', label: '전체' },
@@ -21,10 +22,9 @@ export default function ShelfPage({ books, onOpenBook }) {
 
   const genres = useMemo(() => Array.from(new Set(books.map((b) => b.genre))).sort(), [books]);
 
-  const q = search.trim().toLowerCase();
   const filteredBooks = books
     .filter((b) => (filterStatus === 'all' || b.status === filterStatus) && (!filterGenre || b.genre === filterGenre))
-    .filter((b) => !q || b.title.toLowerCase().includes(q) || (b.author || '').toLowerCase().includes(q))
+    .filter((b) => matchesSearch(b.title, search) || matchesSearch(b.author, search))
     .slice()
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 

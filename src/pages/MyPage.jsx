@@ -139,7 +139,7 @@ export default function MyPage({ userId, profile, books, onUpdateNickname, onUpd
       <div className="blueprint" style={{ padding: 20 }}>
         <div className="card-kicker" style={{ marginBottom: 8 }}>기록 불러오기 / 내보내기</div>
         <p style={{ fontSize: 13, opacity: 0.65, marginTop: 0, marginBottom: 14 }}>
-          "북적북적" 앱에서 내보낸 CSV 파일을 그대로 불러올 수 있어요. (장르·페이지 수·표지·출판사는 옮겨지지 않아요.)
+          다른 곳에서 내보낸 CSV 파일을 그대로 불러올 수 있어요. (장르·페이지 수·표지·출판사는 옮겨지지 않아요.)
         </p>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
           <button type="button" className="btn btn-secondary" onClick={handleTemplate}>양식 다운로드</button>
