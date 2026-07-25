@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { STATUS_LABELS, STATUS_TAG_CLASS, pctOf, fmtDate } from '../lib/format.js';
 import { parseTags } from '../lib/format.js';
 import { generateQuestions, generateMissions } from '../lib/gemini.js';
@@ -30,11 +30,19 @@ export default function BookDetailPage({
   const [deleteBusy, setDeleteBusy] = useState(false);
   const lastGenMissionIds = useRef([]);
   const { groups: myGroups } = useMyGroups(userId);
+  const [localPage, setLocalPage] = useState(book.current_page);
+
+  // 슬라이더를 드래그하는 동안 onChange가 여러 번 연속으로 발생하는데, 매번 서버에
+  // 커밋하면 페이지 이동량이 중복 집계된다(연간기록 페이지 수 부풀림의 원인이었음).
+  // 드래그 중에는 화면 표시만 갱신하고, 손을 뗐을 때 한 번만 실제로 커밋한다.
+  useEffect(() => { setLocalPage(book.current_page); }, [book.current_page]);
+  const commitProgress = (value) => { onSetProgress(book, value); };
 
   const bookRecords = records.filter((r) => r.book_id === book.id).slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   const bookQuestions = questions.filter((q) => q.book_id === book.id).slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   const bookMissions = missions.filter((m) => m.book_id === book.id);
   const pct = pctOf(book);
+  const localPct = book.total_pages > 0 ? Math.min(100, Math.round((localPage / book.total_pages) * 100)) : pct;
 
   const submitRecord = async ({ type, text, tagsText }) => {
     await onAddRecord(book.id, book.title, { type, text, tags: parseTags(tagsText) });
@@ -121,13 +129,16 @@ export default function BookDetailPage({
             </div>
           )}
           <div style={{ flex: 1, minWidth: 220, display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label style={{ fontSize: 12, opacity: 0.65 }}>현재 {book.current_page} / {book.total_pages} 페이지 · {pct}%</label>
+            <label style={{ fontSize: 12, opacity: 0.65 }}>현재 {localPage} / {book.total_pages} 페이지 · {localPct}%</label>
             <div className="progress-track">
-              <span className="progress-fill" style={{ width: `${pct}%` }} />
+              <span className="progress-fill" style={{ width: `${localPct}%` }} />
             </div>
             <input
-              type="range" min="0" max={book.total_pages || 0} value={book.current_page}
-              onChange={(e) => onSetProgress(book, e.target.value)}
+              type="range" min="0" max={book.total_pages || 0} value={localPage}
+              onChange={(e) => setLocalPage(Number(e.target.value))}
+              onMouseUp={(e) => commitProgress(e.target.value)}
+              onTouchEnd={(e) => commitProgress(e.target.value)}
+              onKeyUp={(e) => commitProgress(e.target.value)}
               style={{ width: '100%', accentColor: 'var(--color-accent)' }}
             />
           </div>
