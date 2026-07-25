@@ -1,13 +1,8 @@
 import { useMemo, useState } from 'react';
-import { badgeImage } from '../lib/badges.js';
+import { badgeImage, RANK_TIER } from '../lib/badges.js';
 import { computeEffectivePageLogs } from '../lib/pageLogs.js';
 
 const MONTH_LABELS = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
-const RANK_TIER = [
-  { tier: 'gold', tierLabel: '금 배지' },
-  { tier: 'silver', tierLabel: '은 배지' },
-  { tier: 'bronze', tierLabel: '동 배지' },
-];
 
 export default function AnnualView({ records, books, pageLogs }) {
   const [year, setYear] = useState(() => new Date().getFullYear());

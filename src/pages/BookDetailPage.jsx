@@ -44,7 +44,7 @@ function AiBlockedNotice({ code }) {
 export default function BookDetailPage({
   userId, book, records, questions, missions, profile, onAiUsed,
   onBack, onSetProgress, onAddRecord, onDeleteRecord,
-  onSaveQuestion, onUpdateQuestion, onDeleteQuestion, onAddMissions, onToggleMission, onOpenTag, onGoMissionsArchive,
+  onSaveQuestion, onUpdateQuestion, onDeleteQuestion, onAddMissions, onToggleMission, onDeleteMission, onOpenTag, onGoMissionsArchive,
   onUpdateBook, onDeleteBook, onShareRecord, onShareQuestion, onShareMission, onShareBook, onUpdateRating,
 }) {
   const [questionDrafts, setQuestionDrafts] = useState([]);
@@ -312,7 +312,7 @@ export default function BookDetailPage({
         </div>
         {aiBlocked && <div style={{ marginBottom: 14 }}><AiBlockedNotice code={aiBlockedCode || 'limit_reached'} /></div>}
         {bookMissions.length > 0 && (
-          <MissionList missions={bookMissions} onToggle={onToggleMission} groups={myGroups} onShare={onShareMission} />
+          <MissionList missions={bookMissions} onToggle={onToggleMission} onDelete={onDeleteMission} groups={myGroups} onShare={onShareMission} />
         )}
         <p style={{ fontSize: 12, opacity: 0.55, marginTop: 12 }}>
           완료한 미션은 <span className="link-btn" onClick={onGoMissionsArchive}>실천 기록</span>에서 모아볼 수 있어요.

@@ -9,6 +9,12 @@ export function badgeImage(tier) {
   return BADGE_IMG[tier] || BADGE_IMG.none;
 }
 
+export const RANK_TIER = [
+  { tier: 'gold', tierLabel: '금 배지' },
+  { tier: 'silver', tierLabel: '은 배지' },
+  { tier: 'bronze', tierLabel: '동 배지' },
+];
+
 export function tierForCount(count) {
   if (count >= 10) return { tier: 'gold', tierLabel: '금 배지' };
   if (count >= 5) return { tier: 'silver', tierLabel: '은 배지' };

@@ -55,7 +55,7 @@ function AppShell({ user, profile, onLogout, onProfileChanged, onUpdateNickname,
   const {
     books, records, questions, missions, pageLogs,
     addBook, addBooksBulk, updateBook, updateRating, deleteBook, setBookProgress, addRecord, deleteRecord,
-    saveQuestionAnswer, updateQuestion, deleteQuestion, addMissions, toggleMission,
+    saveQuestionAnswer, updateQuestion, deleteQuestion, addMissions, toggleMission, deleteMission,
     shareRecord, shareQuestion, shareMission, shareBook,
   } = useReadingData(user.id);
 
@@ -101,6 +101,7 @@ function AppShell({ user, profile, onLogout, onProfileChanged, onUpdateNickname,
             onDeleteQuestion={deleteQuestion}
             onAddMissions={addMissions}
             onToggleMission={toggleMission}
+            onDeleteMission={deleteMission}
             onOpenTag={openTag}
             onGoMissionsArchive={() => setScreen('missions')}
             onUpdateBook={updateBook}

@@ -1,34 +1,51 @@
 import { useMemo, useState } from 'react';
 import { useGroups } from '../hooks/useGroups.js';
+import { useGroupRanking } from '../hooks/useGroupRanking.js';
 import { fmtDate, pctOf, STATUS_LABELS, STATUS_TAG_CLASS } from '../lib/format.js';
+import { badgeImage, RANK_TIER } from '../lib/badges.js';
+
+const RANKING_SORT = [
+  { key: 'books_month', label: '이번 달' },
+  { key: 'books_year', label: '올해' },
+  { key: 'books_total', label: '전체' },
+];
 
 export default function TogetherPage({ userId, nickname }) {
   const {
     groups, members, questions, answers, missions, doneRows, loading,
     sharedRecords, sharedQuestions, sharedMissions, sharedBooks, questionAnswers,
+    goals, questionComments,
     createGroup, joinGroup, updateGroup, deleteGroup,
     addGroupQuestion, updateGroupQuestion, deleteGroupQuestion, upsertAnswer,
     addGroupMission, updateGroupMission, deleteGroupMission, toggleGroupMissionDone,
     upsertQuestionAnswer,
+    kickMember, setGroupGoal, addQuestionComment, deleteQuestionComment,
   } = useGroups(userId);
 
   const [showCreate, setShowCreate] = useState(false);
   const [showJoin, setShowJoin] = useState(false);
   const [activeGroupId, setActiveGroupId] = useState(null);
 
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
+
   const groupsView = useMemo(() => groups.map((g) => {
     const groupMembers = members.filter((m) => m.group_id === g.id);
     const groupQuestions = questions.filter((q) => q.group_id === g.id);
     const groupMissions = missions.filter((m) => m.group_id === g.id);
+    const goal = goals.find((gl) => gl.group_id === g.id && gl.year === currentYear && gl.month === currentMonth) || null;
     return {
       ...g,
+      goal,
       members: groupMembers.map((m) => ({ id: m.user_id, nickname: m.ddok_profiles?.nickname || '독서가' })),
       questions: groupQuestions.map((q) => {
         const qAnswers = answers.filter((a) => a.group_question_id === q.id);
         const mine = qAnswers.find((a) => a.user_id === userId);
         const others = qAnswers.filter((a) => a.user_id !== userId);
         const canManage = q.created_by === userId || g.owner_id === userId;
-        return { ...q, myAnswer: mine?.text || '', others, canManage };
+        const comments = questionComments.filter((c) => c.group_question_id === q.id);
+        return { ...q, myAnswer: mine?.text || '', others, canManage, comments };
       }),
       missions: groupMissions.map((m) => {
         const doneForMission = doneRows.filter((d) => d.group_mission_id === m.id);
@@ -53,7 +70,10 @@ export default function TogetherPage({ userId, nickname }) {
         .filter((b) => (b.shared_group_ids || []).includes(g.id))
         .map((b) => ({ ...b, nickname: b.ddok_profiles?.nickname || '독서가' })),
     };
-  }), [groups, members, questions, answers, missions, doneRows, sharedRecords, sharedQuestions, sharedMissions, sharedBooks, questionAnswers, userId]);
+  }), [
+    groups, members, questions, answers, missions, doneRows, sharedRecords, sharedQuestions, sharedMissions, sharedBooks,
+    questionAnswers, userId, goals, questionComments, currentYear, currentMonth,
+  ]);
 
   const activeGroup = groupsView.find((g) => g.id === activeGroupId) || null;
 
@@ -74,6 +94,10 @@ export default function TogetherPage({ userId, nickname }) {
         onUpdateGroup={(payload) => updateGroup(activeGroup.id, payload)}
         onDeleteGroup={async () => { await deleteGroup(activeGroup.id); setActiveGroupId(null); }}
         onAnswerSharedQuestion={(qId, text) => upsertQuestionAnswer(qId, text)}
+        onKickMember={(memberId) => kickMember(activeGroup.id, memberId)}
+        onSetGoal={(target) => setGroupGoal(activeGroup.id, target)}
+        onAddComment={(questionId, text) => addQuestionComment(questionId, text)}
+        onDeleteComment={(id) => deleteQuestionComment(id)}
       />
     );
   }
@@ -148,6 +172,7 @@ function GroupDetailView({
   grp, userId, onBack, onAddQuestion, onUpdateQuestion, onDeleteQuestion, onAnswer,
   onAddMission, onUpdateMission, onDeleteMission, onToggleMission,
   onUpdateGroup, onDeleteGroup, onAnswerSharedQuestion,
+  onKickMember, onSetGoal, onAddComment, onDeleteComment,
 }) {
   const [newQuestion, setNewQuestion] = useState('');
   const [questionBusy, setQuestionBusy] = useState(false);
@@ -158,6 +183,8 @@ function GroupDetailView({
   const [showEditGroup, setShowEditGroup] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const isOwner = grp.owner_id === userId;
+  const { ranking, loading: rankingLoading } = useGroupRanking(grp.id);
+  const monthTotal = ranking.reduce((sum, r) => sum + (r.books_month || 0), 0);
 
   const handleDelete = async () => {
     if (!window.confirm(`정말 '${grp.name}' 모임을 삭제할까요? 모임의 질문·미션·공유 기록이 모두 사라지고, 되돌릴 수 없어요.`)) return;
@@ -166,6 +193,15 @@ function GroupDetailView({
       await onDeleteGroup();
     } finally {
       setDeleteBusy(false);
+    }
+  };
+
+  const handleKick = async (memberId, memberNickname) => {
+    if (!window.confirm(`${memberNickname}님을 모임에서 내보낼까요?`)) return;
+    try {
+      await onKickMember(memberId);
+    } catch (err) {
+      alert(err.message || '내보내기에 실패했어요.');
     }
   };
 
@@ -227,9 +263,29 @@ function GroupDetailView({
           </div>
           <div className="member-chips">
             {grp.members.map((mem) => (
-              <span key={mem.id} className={`tag ${mem.id === userId ? 'tag-accent' : 'tag-neutral'}`}>{mem.nickname}</span>
+              <span key={mem.id} className={`tag ${mem.id === userId ? 'tag-accent' : 'tag-neutral'}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                {mem.nickname}
+                {isOwner && mem.id !== userId && (
+                  <button
+                    type="button" onClick={() => handleKick(mem.id, mem.nickname)} title="강퇴"
+                    style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 0, lineHeight: 1, opacity: 0.6, fontSize: 13 }}
+                  >
+                    ×
+                  </button>
+                )}
+              </span>
             ))}
           </div>
+        </div>
+
+        <div>
+          <h4 style={{ marginBottom: 10, fontSize: 15 }}>이번 달 목표</h4>
+          <GroupGoalCard goal={grp.goal} monthTotal={monthTotal} onSetGoal={onSetGoal} />
+        </div>
+
+        <div>
+          <h4 style={{ marginBottom: 10, fontSize: 15 }}>모임 랭킹</h4>
+          <GroupRankingList ranking={ranking} loading={rankingLoading} userId={userId} />
         </div>
 
         <div>
@@ -272,9 +328,11 @@ function GroupDetailView({
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {grp.questions.map((q) => (
               <GroupQuestion
-                key={q.id} q={q} onAnswer={(text) => onAnswer(q.id, text)}
+                key={q.id} q={q} userId={userId} onAnswer={(text) => onAnswer(q.id, text)}
                 onEdit={(text) => onUpdateQuestion(q.id, text)}
                 onDelete={() => onDeleteQuestion(q.id)}
+                onAddComment={(text) => onAddComment(q.id, text)}
+                onDeleteComment={onDeleteComment}
               />
             ))}
           </div>
@@ -372,7 +430,109 @@ function GroupDetailView({
   );
 }
 
-function GroupQuestion({ q, onAnswer, onEdit, onDelete }) {
+function GroupGoalCard({ goal, monthTotal, onSetGoal }) {
+  const [editing, setEditing] = useState(false);
+  const [target, setTarget] = useState(goal?.target_books ? String(goal.target_books) : '');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  const pct = goal ? Math.min(100, Math.round((monthTotal / goal.target_books) * 100)) : 0;
+
+  const save = async () => {
+    const n = parseInt(target, 10);
+    if (!n || n <= 0) { setError('1 이상의 숫자를 입력해주세요.'); return; }
+    setBusy(true);
+    setError('');
+    try {
+      await onSetGoal(n);
+      setEditing(false);
+    } catch (err) {
+      setError(err.message || '저장에 실패했어요.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="blueprint" style={{ padding: 14 }}>
+      {goal ? (
+        <>
+          <div style={{ fontSize: 13, marginBottom: 8 }}>
+            이번 달 목표 <b>{goal.target_books}권</b> 중 <b>{monthTotal}권</b> 달성
+          </div>
+          <div className="progress-row">
+            <div className="progress-track"><span className="progress-fill" style={{ width: `${pct}%` }} /></div>
+            <span className="progress-label">{pct}%</span>
+          </div>
+        </>
+      ) : (
+        <div className="empty-state small" style={{ padding: '4px 0' }}>아직 이번 달 목표가 없어요.</div>
+      )}
+      {editing ? (
+        <div style={{ display: 'flex', gap: 8, marginTop: 10, alignItems: 'center' }}>
+          <input
+            className="input" type="number" min="1" style={{ maxWidth: 100 }}
+            value={target} onChange={(e) => setTarget(e.target.value)} placeholder="권수"
+          />
+          <button type="button" className="btn btn-secondary" style={{ fontSize: 12 }} onClick={save} disabled={busy}>
+            {busy ? '저장 중...' : '저장'}
+          </button>
+          <button type="button" className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => { setEditing(false); setError(''); }}>취소</button>
+          {error && <span className="error-text">{error}</span>}
+        </div>
+      ) : (
+        <button type="button" className="link-btn" style={{ fontSize: 12, marginTop: 8 }} onClick={() => setEditing(true)}>
+          {goal ? '목표 수정' : '목표 설정하기'}
+        </button>
+      )}
+    </div>
+  );
+}
+
+function GroupRankingList({ ranking, loading, userId }) {
+  const [sortKey, setSortKey] = useState('books_month');
+  const sorted = ranking.slice().sort((a, b) => (b[sortKey] || 0) - (a[sortKey] || 0));
+
+  return (
+    <div>
+      <div className="seg" style={{ marginBottom: 12 }}>
+        {RANKING_SORT.map((opt) => (
+          <label className="seg-opt" key={opt.key}>
+            <input type="radio" name="rankingSort" checked={sortKey === opt.key} onChange={() => setSortKey(opt.key)} />
+            {opt.label}
+          </label>
+        ))}
+      </div>
+      {loading ? (
+        <div className="empty-state small">불러오는 중...</div>
+      ) : sorted.length === 0 ? (
+        <div className="empty-state small">멤버가 없어요.</div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {sorted.map((r, i) => {
+            const medal = RANK_TIER[i];
+            return (
+              <div key={r.user_id} className="blueprint" style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ width: 26, flex: 'none', textAlign: 'center' }}>
+                  {medal
+                    ? <img src={badgeImage(medal.tier)} alt={medal.tierLabel} style={{ width: 24, height: 24, objectFit: 'contain' }} />
+                    : <span style={{ fontSize: 12, opacity: 0.5 }}>{i + 1}</span>}
+                </div>
+                <div style={{ flex: 1, fontSize: 14, fontWeight: r.user_id === userId ? 600 : 400 }}>
+                  {r.nickname}
+                  {r.user_id === userId && <span style={{ fontSize: 11, opacity: 0.55 }}> (나)</span>}
+                </div>
+                <div style={{ fontSize: 13, opacity: 0.7 }}>{r[sortKey] || 0}권</div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function GroupQuestion({ q, userId, onAnswer, onEdit, onDelete, onAddComment, onDeleteComment }) {
   const [text, setText] = useState(q.myAnswer);
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(q.text);
@@ -435,6 +595,56 @@ function GroupQuestion({ q, onAnswer, onEdit, onDelete }) {
           {answerBusy ? '저장 중...' : answerSaved ? '저장됨 ✓' : '답변 저장'}
         </button>
       </div>
+      {q.comments.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, borderTop: '1px solid var(--color-divider)', paddingTop: 10 }}>
+          {q.comments.map((c) => (
+            <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 12 }}>
+              <span>
+                <b style={{ color: 'var(--color-text)' }}>{c.ddok_profiles?.nickname || '독서가'}</b>
+                <span style={{ color: 'var(--color-neutral-700)' }}> · {c.text}</span>
+              </span>
+              {c.user_id === userId && (
+                <button
+                  type="button" className="link-btn" style={{ fontSize: 11, color: '#b3413a', flex: 'none' }}
+                  onClick={() => onDeleteComment(c.id)}
+                >
+                  삭제
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+      <CommentInput onSubmit={onAddComment} />
+    </div>
+  );
+}
+
+function CommentInput({ onSubmit }) {
+  const [text, setText] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const submit = async () => {
+    if (!text.trim()) return;
+    setBusy(true);
+    try {
+      await onSubmit(text);
+      setText('');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div style={{ display: 'flex', gap: 6 }}>
+      <input
+        className="input" style={{ fontSize: 13 }} placeholder="댓글 달기" value={text}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); submit(); } }}
+      />
+      <button type="button" className="btn btn-ghost" style={{ fontSize: 12 }} onClick={submit} disabled={busy || !text.trim()}>
+        등록
+      </button>
     </div>
   );
 }
