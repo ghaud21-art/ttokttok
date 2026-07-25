@@ -54,7 +54,8 @@ export default function BookDetailPage({
 
   useEffect(() => { setUsesCount(profile?.ai_uses_count || 0); }, [profile?.ai_uses_count]);
   const isAdmin = !!profile?.is_admin;
-  const limitReached = !isAdmin && usesCount >= FREE_USES;
+  const isUnlimited = isAdmin || !!profile?.ai_unlimited;
+  const limitReached = !isUnlimited && usesCount >= FREE_USES;
   const aiBlocked = aiBlockedCode === 'ai_disabled' || limitReached;
 
   // 슬라이더를 드래그하는 동안 onChange가 여러 번 연속으로 발생하는데, 매번 서버에
@@ -210,7 +211,7 @@ export default function BookDetailPage({
           <h3 style={{ margin: 0 }}>AI 성찰 질문</h3>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ fontSize: 12, opacity: 0.55 }}>
-              {isAdmin ? '무제한 (관리자)' : `무료 ${Math.max(0, FREE_USES - usesCount)}/${FREE_USES}회 남음`}
+              {isUnlimited ? '무제한' : `무료 ${Math.max(0, FREE_USES - usesCount)}/${FREE_USES}회 남음`}
             </span>
             {!aiBlocked && (
               <button type="button" className="btn btn-secondary" onClick={runGenerateQuestions} disabled={aiBusy.questions}>
@@ -251,7 +252,7 @@ export default function BookDetailPage({
           <h3 style={{ margin: 0 }}>AI 실천 미션</h3>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ fontSize: 12, opacity: 0.55 }}>
-              {isAdmin ? '무제한 (관리자)' : `무료 ${Math.max(0, FREE_USES - usesCount)}/${FREE_USES}회 남음`}
+              {isUnlimited ? '무제한' : `무료 ${Math.max(0, FREE_USES - usesCount)}/${FREE_USES}회 남음`}
             </span>
             {!aiBlocked && (
               <button type="button" className="btn btn-secondary" onClick={runGenerateMissions} disabled={aiBusy.missions}>

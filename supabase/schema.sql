@@ -19,6 +19,7 @@ create table if not exists public.ddok_profiles (
   nickname text not null default '독서가',
   is_admin boolean not null default false,
   ai_uses_count int not null default 0,
+  ai_unlimited boolean not null default false,
   created_at timestamptz not null default now()
 );
 
@@ -34,10 +35,10 @@ create policy "ddok users can update their own profile"
   to authenticated
   using (id = auth.uid());
 
--- is_admin / ai_uses_count는 클라이언트가 직접 못 바꾸게 컬럼 단위로 권한을 뺀다.
+-- is_admin / ai_uses_count / ai_unlimited는 클라이언트가 직접 못 바꾸게 컬럼 단위로 권한을 뺀다.
 -- (행 단위 정책만으로는 "본인 프로필이니 아무 컬럼이나 수정 가능"이 되어버림 —
 -- 그러면 누구나 자기 자신을 관리자로 만들거나 사용 횟수를 조작할 수 있음)
-revoke update (is_admin, ai_uses_count) on public.ddok_profiles from authenticated;
+revoke update (is_admin, ai_uses_count, ai_unlimited) on public.ddok_profiles from authenticated;
 
 -- 관리자 여부 확인 헬퍼 (다른 정책에서 재사용)
 create or replace function public.ddok_is_admin()

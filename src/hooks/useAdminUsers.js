@@ -46,5 +46,10 @@ export function useAdminUsers() {
     await reload();
   }, [reload]);
 
-  return { users, loading, error, reload, setBan, deleteUser };
+  const setAiUnlimited = useCallback(async (userId, unlimited) => {
+    await authedFetch('/api/admin/set-ai-unlimited', { method: 'POST', body: JSON.stringify({ userId, unlimited }) });
+    await reload();
+  }, [reload]);
+
+  return { users, loading, error, reload, setBan, deleteUser, setAiUnlimited };
 }

@@ -103,10 +103,11 @@ export default async function handler(req, res) {
   const supabaseAdmin = getSupabaseAdmin();
   const [{ data: settings }, { data: profile }] = await Promise.all([
     supabaseAdmin.from('ddok_app_settings').select('ai_enabled').eq('id', true).maybeSingle(),
-    supabaseAdmin.from('ddok_profiles').select('is_admin, ai_uses_count').eq('id', user.id).maybeSingle(),
+    supabaseAdmin.from('ddok_profiles').select('is_admin, ai_uses_count, ai_unlimited').eq('id', user.id).maybeSingle(),
   ]);
 
   const isAdmin = !!profile?.is_admin;
+  const unlimitedAccess = isAdmin || !!profile?.ai_unlimited;
   const aiEnabled = settings ? settings.ai_enabled !== false : true;
   const usesCount = profile?.ai_uses_count || 0;
 
@@ -114,7 +115,7 @@ export default async function handler(req, res) {
     res.status(403).json({ error: 'ai_disabled' });
     return;
   }
-  if (!isAdmin && usesCount >= FREE_USES) {
+  if (!unlimitedAccess && usesCount >= FREE_USES) {
     res.status(403).json({ error: 'limit_reached', usesCount, freeUses: FREE_USES });
     return;
   }
@@ -144,9 +145,15 @@ export default async function handler(req, res) {
       : { missions: FALLBACK_MISSIONS };
   }
 
-  if (!isAdmin) {
+  if (!unlimitedAccess) {
     await supabaseAdmin.from('ddok_profiles').update({ ai_uses_count: usesCount + 1 }).eq('id', user.id);
   }
 
-  res.status(200).json({ ...result, isAdmin, usesCount: isAdmin ? usesCount : usesCount + 1, freeUses: FREE_USES });
+  res.status(200).json({
+    ...result,
+    isAdmin,
+    aiUnlimited: unlimitedAccess,
+    usesCount: unlimitedAccess ? usesCount : usesCount + 1,
+    freeUses: FREE_USES,
+  });
 }

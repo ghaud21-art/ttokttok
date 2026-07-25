@@ -11,7 +11,7 @@ export function useAuth() {
       setProfile(null);
       return;
     }
-    const { data } = await supabase.from('ddok_profiles').select('id, nickname, is_admin, ai_uses_count').eq('id', userId).maybeSingle();
+    const { data } = await supabase.from('ddok_profiles').select('id, nickname, is_admin, ai_uses_count, ai_unlimited').eq('id', userId).maybeSingle();
     setProfile(data || null);
   }, []);
 

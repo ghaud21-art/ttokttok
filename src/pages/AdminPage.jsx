@@ -4,7 +4,7 @@ import { useAppSettings } from '../hooks/useAppSettings.js';
 import { fmtDate } from '../lib/format.js';
 
 export default function AdminPage() {
-  const { users, loading, error, setBan, deleteUser } = useAdminUsers();
+  const { users, loading, error, setBan, deleteUser, setAiUnlimited } = useAdminUsers();
   const { aiEnabled, loading: settingsLoading, setAiEnabled } = useAppSettings();
   const [toggleBusy, setToggleBusy] = useState(false);
   const [toggleError, setToggleError] = useState('');
@@ -61,7 +61,7 @@ export default function AdminPage() {
             </thead>
             <tbody>
               {users.map((u) => (
-                <UserRow key={u.id} u={u} onSetBan={setBan} onDelete={deleteUser} />
+                <UserRow key={u.id} u={u} onSetBan={setBan} onDelete={deleteUser} onSetAiUnlimited={setAiUnlimited} />
               ))}
             </tbody>
           </table>
@@ -71,7 +71,7 @@ export default function AdminPage() {
   );
 }
 
-function UserRow({ u, onSetBan, onDelete }) {
+function UserRow({ u, onSetBan, onDelete, onSetAiUnlimited }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -91,6 +91,18 @@ function UserRow({ u, onSetBan, onDelete }) {
     }
   };
 
+  const toggleUnlimited = async () => {
+    setBusy(true);
+    setError('');
+    try {
+      await onSetAiUnlimited(u.id, !u.aiUnlimited);
+    } catch (err) {
+      setError(err.message || '처리에 실패했어요.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const confirmDelete = async () => {
     setBusy(true);
     setError('');
@@ -103,10 +115,12 @@ function UserRow({ u, onSetBan, onDelete }) {
   };
 
   const aiStatus = u.isAdmin
-    ? { label: '무제한', cls: 'tag-accent' }
-    : u.aiUsesCount >= 3
-      ? { label: '제한 도달 (3/3)', cls: 'tag-danger' }
-      : { label: `${u.aiUsesCount}/3 사용`, cls: 'tag-accent-2' };
+    ? { label: '무제한 (관리자)', cls: 'tag-accent' }
+    : u.aiUnlimited
+      ? { label: '무제한 (부여됨)', cls: 'tag-accent' }
+      : u.aiUsesCount >= 3
+        ? { label: '제한 도달 (3/3)', cls: 'tag-danger' }
+        : { label: `${u.aiUsesCount}/3 사용`, cls: 'tag-accent-2' };
 
   return (
     <>
@@ -124,6 +138,9 @@ function UserRow({ u, onSetBan, onDelete }) {
         <td>
           {!u.isAdmin && (
             <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+              <button type="button" className="btn btn-secondary" style={{ fontSize: 12 }} onClick={toggleUnlimited} disabled={busy}>
+                {u.aiUnlimited ? 'AI 무제한 해제' : 'AI 무제한 부여'}
+              </button>
               <button type="button" className="btn btn-secondary" style={{ fontSize: 12 }} onClick={toggleBan} disabled={busy}>
                 {u.banned ? '정지 해제' : '정지'}
               </button>

@@ -16,7 +16,7 @@ export default async function handler(req, res) {
 
     const [{ data: authList, error: authError }, { data: profiles }, { data: bookRows }] = await Promise.all([
       supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 }),
-      supabaseAdmin.from('ddok_profiles').select('id, nickname, is_admin, ai_uses_count'),
+      supabaseAdmin.from('ddok_profiles').select('id, nickname, is_admin, ai_uses_count, ai_unlimited'),
       supabaseAdmin.from('ddok_books').select('owner_id'),
     ]);
 
@@ -41,6 +41,7 @@ export default async function handler(req, res) {
         nickname: profileById[u.id]?.nickname || '',
         isAdmin: !!profileById[u.id]?.is_admin,
         aiUsesCount: profileById[u.id]?.ai_uses_count || 0,
+        aiUnlimited: !!profileById[u.id]?.ai_unlimited,
         bookCount: bookCountById[u.id] || 0,
       }))
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
