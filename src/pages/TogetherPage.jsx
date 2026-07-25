@@ -266,7 +266,9 @@ function GroupDetailView({
         </div>
 
         <div>
-          <h4 style={{ marginBottom: 10, fontSize: 15 }}>함께 질문</h4>
+          <h4 style={{ marginBottom: 10, fontSize: 15 }}>
+            함께 질문 <span style={{ fontSize: 12, fontWeight: 400, opacity: 0.55 }}>— 함께 나누고 싶은 이야기</span>
+          </h4>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {grp.questions.map((q) => (
               <GroupQuestion
@@ -286,7 +288,9 @@ function GroupDetailView({
         </div>
 
         <div>
-          <h4 style={{ marginBottom: 10, fontSize: 15 }}>함께 미션</h4>
+          <h4 style={{ marginBottom: 10, fontSize: 15 }}>
+            함께 미션 <span style={{ fontSize: 12, fontWeight: 400, opacity: 0.55 }}>— 함께 실천하고 싶은 것</span>
+          </h4>
           <div className="blueprint mission-list">
             {grp.missions.map((m) => (
               <GroupMissionRow
@@ -327,7 +331,7 @@ function GroupDetailView({
         </div>
 
         <div>
-          <h4 style={{ marginBottom: 10, fontSize: 15 }}>멤버들의 AI 질문 노트</h4>
+          <h4 style={{ marginBottom: 10, fontSize: 15 }}>멤버들의 질문노트</h4>
           {grp.sharedQuestions.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {grp.sharedQuestions.map((q) => (
@@ -340,7 +344,7 @@ function GroupDetailView({
         </div>
 
         <div>
-          <h4 style={{ marginBottom: 10, fontSize: 15 }}>멤버들의 AI 미션</h4>
+          <h4 style={{ marginBottom: 10, fontSize: 15 }}>멤버들의 실천미션</h4>
           {grp.sharedMissions.length > 0 ? (
             <div className="blueprint mission-list">
               {grp.sharedMissions.map((m) => (

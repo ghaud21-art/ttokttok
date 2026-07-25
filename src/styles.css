@@ -265,8 +265,10 @@ textarea.input { min-height: 90px; resize: vertical; }
   .container { padding: var(--space-6) var(--space-4) 56px; }
   h1 { font-size: 30px; }
 
-  .book-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
-  .book-card { padding: 8px; gap: 6px; }
+  .book-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .book-card { padding: 8px; gap: 6px; min-width: 0; }
+  .book-card .tag-list { overflow: hidden; }
+  .book-card .tag { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
   .book-card-title { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .book-card-author { font-size: 10px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .book-card .tag-list { gap: 4px; }
