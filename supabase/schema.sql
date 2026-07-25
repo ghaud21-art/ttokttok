@@ -518,7 +518,7 @@ create table if not exists public.ddok_group_goals (
   group_id uuid not null references public.ddok_groups(id) on delete cascade,
   year int not null,
   month int not null,
-  target_books int not null check (target_books > 0),
+  goal_text text not null default '',
   updated_by uuid references public.ddok_profiles(id) on delete set null,
   updated_at timestamptz not null default now(),
   unique (group_id, year, month)

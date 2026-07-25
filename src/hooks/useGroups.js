@@ -197,11 +197,11 @@ export function useGroups(userId) {
     await reload();
   }, [reload]);
 
-  const setGroupGoal = useCallback(async (groupId, targetBooks) => {
+  const setGroupGoal = useCallback(async (groupId, goalText) => {
     const now = new Date();
     const { error } = await supabase.from('ddok_group_goals').upsert({
       group_id: groupId, year: now.getFullYear(), month: now.getMonth() + 1,
-      target_books: targetBooks, updated_by: userId, updated_at: now.toISOString(),
+      goal_text: goalText.trim(), updated_by: userId, updated_at: now.toISOString(),
     }, { onConflict: 'group_id,year,month' });
     if (error) throw error;
     await reload();

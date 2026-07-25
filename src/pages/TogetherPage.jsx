@@ -182,9 +182,9 @@ function GroupDetailView({
   const [missionError, setMissionError] = useState('');
   const [showEditGroup, setShowEditGroup] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
+  const [tab, setTab] = useState('main');
   const isOwner = grp.owner_id === userId;
   const { ranking, loading: rankingLoading } = useGroupRanking(grp.id);
-  const monthTotal = ranking.reduce((sum, r) => sum + (r.books_month || 0), 0);
 
   const handleDelete = async () => {
     if (!window.confirm(`정말 '${grp.name}' 모임을 삭제할까요? 모임의 질문·미션·공유 기록이 모두 사라지고, 되돌릴 수 없어요.`)) return;
@@ -263,160 +263,198 @@ function GroupDetailView({
           </div>
           <div className="member-chips">
             {grp.members.map((mem) => (
-              <span key={mem.id} className={`tag ${mem.id === userId ? 'tag-accent' : 'tag-neutral'}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                {mem.nickname}
-                {isOwner && mem.id !== userId && (
-                  <button
-                    type="button" onClick={() => handleKick(mem.id, mem.nickname)} title="강퇴"
-                    style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 0, lineHeight: 1, opacity: 0.6, fontSize: 13 }}
-                  >
-                    ×
-                  </button>
-                )}
-              </span>
+              <span key={mem.id} className={`tag ${mem.id === userId ? 'tag-accent' : 'tag-neutral'}`}>{mem.nickname}</span>
             ))}
           </div>
         </div>
 
-        <div>
-          <h4 style={{ marginBottom: 10, fontSize: 15 }}>이번 달 목표</h4>
-          <GroupGoalCard goal={grp.goal} monthTotal={monthTotal} onSetGoal={onSetGoal} />
+        <div className="seg" style={{ marginTop: 16 }}>
+          <label className="seg-opt"><input type="radio" name="groupTab" checked={tab === 'main'} onChange={() => setTab('main')} />메인</label>
+          <label className="seg-opt"><input type="radio" name="groupTab" checked={tab === 'share'} onChange={() => setTab('share')} />함께 나누기</label>
+          <label className="seg-opt"><input type="radio" name="groupTab" checked={tab === 'ranking'} onChange={() => setTab('ranking')} />랭킹</label>
+          <label className="seg-opt"><input type="radio" name="groupTab" checked={tab === 'settings'} onChange={() => setTab('settings')} />모임 설정</label>
         </div>
 
-        <div>
-          <h4 style={{ marginBottom: 10, fontSize: 15 }}>모임 랭킹</h4>
-          <GroupRankingList ranking={ranking} loading={rankingLoading} userId={userId} />
-        </div>
-
-        <div>
-          <h4 style={{ marginBottom: 10, fontSize: 15 }}>멤버 독서 현황판</h4>
-          {grp.sharedBooks.length > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {grp.sharedBooks.map((b) => {
-                const pct = pctOf(b);
-                return (
-                  <div key={b.id} className="blueprint" style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div className="cover-wrap" style={{ width: 36, height: 48, flex: 'none' }}>
-                      {b.cover_url ? <img src={b.cover_url} alt={b.title} /> : <div className="cover-placeholder" style={{ fontSize: 8 }}>cover</div>}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 12, opacity: 0.6 }}>{b.nickname}</div>
-                      <div style={{ fontSize: 14, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {b.title} <span style={{ fontWeight: 400, opacity: 0.6 }}>{b.author}</span>
-                      </div>
-                      <div className="progress-row" style={{ marginTop: 4 }}>
-                        <div className="progress-track">
-                          <span className="progress-fill" style={{ width: `${pct}%` }} />
+        {tab === 'main' && (
+          <>
+            <div>
+              <h4 style={{ marginBottom: 10, fontSize: 15 }}>멤버 독서 현황판</h4>
+              {grp.sharedBooks.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {grp.sharedBooks.map((b) => {
+                    const pct = pctOf(b);
+                    return (
+                      <div key={b.id} className="blueprint" style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div className="cover-wrap" style={{ width: 36, height: 48, flex: 'none' }}>
+                          {b.cover_url ? <img src={b.cover_url} alt={b.title} /> : <div className="cover-placeholder" style={{ fontSize: 8 }}>cover</div>}
                         </div>
-                        <span className="progress-label">{pct}%</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 12, opacity: 0.6 }}>{b.nickname}</div>
+                          <div style={{ fontSize: 14, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {b.title} <span style={{ fontWeight: 400, opacity: 0.6 }}>{b.author}</span>
+                          </div>
+                          <div className="progress-row" style={{ marginTop: 4 }}>
+                            <div className="progress-track">
+                              <span className="progress-fill" style={{ width: `${pct}%` }} />
+                            </div>
+                            <span className="progress-label">{pct}%</span>
+                          </div>
+                        </div>
+                        <span className={STATUS_TAG_CLASS[b.status]} style={{ flex: 'none' }}>{STATUS_LABELS[b.status]}</span>
                       </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="empty-state small">아직 공유된 독서 현황이 없어요. 개인 책장 → 책 상세에서 이 모임에 현황을 공유해보세요.</div>
+              )}
+            </div>
+
+            <div>
+              <h4 style={{ marginBottom: 10, fontSize: 15 }}>이번 달 목표</h4>
+              <GroupGoalCard goal={grp.goal} onSetGoal={onSetGoal} editable={false} />
+            </div>
+          </>
+        )}
+
+        {tab === 'share' && (
+          <>
+            <div>
+              <h4 style={{ marginBottom: 10, fontSize: 15 }}>
+                함께 질문 <span style={{ fontSize: 12, fontWeight: 400, opacity: 0.55 }}>— 함께 나누고 싶은 이야기</span>
+              </h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {grp.questions.map((q) => (
+                  <GroupQuestion
+                    key={q.id} q={q} userId={userId} onAnswer={(text) => onAnswer(q.id, text)}
+                    onEdit={(text) => onUpdateQuestion(q.id, text)}
+                    onDelete={() => onDeleteQuestion(q.id)}
+                    onAddComment={(text) => onAddComment(q.id, text)}
+                    onDeleteComment={onDeleteComment}
+                  />
+                ))}
+              </div>
+              <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                <input className="input" placeholder="새 질문 추가하기" value={newQuestion} onChange={(e) => setNewQuestion(e.target.value)} />
+                <button type="button" className="btn btn-secondary" onClick={submitQuestion} disabled={questionBusy || !newQuestion.trim()}>
+                  {questionBusy ? '추가 중...' : '추가'}
+                </button>
+              </div>
+              {questionError && <div className="error-text" style={{ marginTop: 6 }}>{questionError}</div>}
+            </div>
+
+            <div>
+              <h4 style={{ marginBottom: 10, fontSize: 15 }}>
+                함께 미션 <span style={{ fontSize: 12, fontWeight: 400, opacity: 0.55 }}>— 함께 실천하고 싶은 것</span>
+              </h4>
+              <div className="blueprint mission-list">
+                {grp.missions.map((m) => (
+                  <GroupMissionRow
+                    key={m.id} m={m} memberCount={grp.members.length}
+                    onToggle={() => onToggleMission(m.id, m.doneByMe)}
+                    onEdit={(text) => onUpdateMission(m.id, text)}
+                    onDelete={() => onDeleteMission(m.id)}
+                  />
+                ))}
+              </div>
+              <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                <input className="input" placeholder="새 미션 추가하기" value={newMission} onChange={(e) => setNewMission(e.target.value)} />
+                <button type="button" className="btn btn-secondary" onClick={submitMission} disabled={missionBusy || !newMission.trim()}>
+                  {missionBusy ? '추가 중...' : '추가'}
+                </button>
+              </div>
+              {missionError && <div className="error-text" style={{ marginTop: 6 }}>{missionError}</div>}
+            </div>
+
+            <div>
+              <h4 style={{ marginBottom: 10, fontSize: 15 }}>멤버들이 공유한 기록</h4>
+              {grp.sharedRecords.length > 0 ? (
+                <div className="record-grid">
+                  {grp.sharedRecords.map((r) => (
+                    <div className="blueprint record-card" key={r.id}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                        <span className={r.type === 'quote' ? 'tag tag-outline' : 'tag tag-accent'}>{r.type === 'quote' ? '인용구' : '인사이트'}</span>
+                        <span style={{ fontSize: 12, opacity: 0.6 }}>{r.nickname} · {r.book_title}</span>
+                      </div>
+                      <p style={{ margin: 0, fontSize: 14, lineHeight: 1.55 }}>{r.text}</p>
+                      <div className="timestamp">{fmtDate(r.created_at)}</div>
                     </div>
-                    <span className={STATUS_TAG_CLASS[b.status]} style={{ flex: 'none' }}>{STATUS_LABELS[b.status]}</span>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="empty-state small">아직 공유된 독서 현황이 없어요. 개인 책장 → 책 상세에서 이 모임에 현황을 공유해보세요.</div>
-          )}
-        </div>
-
-        <div>
-          <h4 style={{ marginBottom: 10, fontSize: 15 }}>
-            함께 질문 <span style={{ fontSize: 12, fontWeight: 400, opacity: 0.55 }}>— 함께 나누고 싶은 이야기</span>
-          </h4>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {grp.questions.map((q) => (
-              <GroupQuestion
-                key={q.id} q={q} userId={userId} onAnswer={(text) => onAnswer(q.id, text)}
-                onEdit={(text) => onUpdateQuestion(q.id, text)}
-                onDelete={() => onDeleteQuestion(q.id)}
-                onAddComment={(text) => onAddComment(q.id, text)}
-                onDeleteComment={onDeleteComment}
-              />
-            ))}
-          </div>
-          <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-            <input className="input" placeholder="새 질문 추가하기" value={newQuestion} onChange={(e) => setNewQuestion(e.target.value)} />
-            <button type="button" className="btn btn-secondary" onClick={submitQuestion} disabled={questionBusy || !newQuestion.trim()}>
-              {questionBusy ? '추가 중...' : '추가'}
-            </button>
-          </div>
-          {questionError && <div className="error-text" style={{ marginTop: 6 }}>{questionError}</div>}
-        </div>
-
-        <div>
-          <h4 style={{ marginBottom: 10, fontSize: 15 }}>
-            함께 미션 <span style={{ fontSize: 12, fontWeight: 400, opacity: 0.55 }}>— 함께 실천하고 싶은 것</span>
-          </h4>
-          <div className="blueprint mission-list">
-            {grp.missions.map((m) => (
-              <GroupMissionRow
-                key={m.id} m={m} memberCount={grp.members.length}
-                onToggle={() => onToggleMission(m.id, m.doneByMe)}
-                onEdit={(text) => onUpdateMission(m.id, text)}
-                onDelete={() => onDeleteMission(m.id)}
-              />
-            ))}
-          </div>
-          <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-            <input className="input" placeholder="새 미션 추가하기" value={newMission} onChange={(e) => setNewMission(e.target.value)} />
-            <button type="button" className="btn btn-secondary" onClick={submitMission} disabled={missionBusy || !newMission.trim()}>
-              {missionBusy ? '추가 중...' : '추가'}
-            </button>
-          </div>
-          {missionError && <div className="error-text" style={{ marginTop: 6 }}>{missionError}</div>}
-        </div>
-
-        <div>
-          <h4 style={{ marginBottom: 10, fontSize: 15 }}>멤버들이 공유한 기록</h4>
-          {grp.sharedRecords.length > 0 ? (
-            <div className="record-grid">
-              {grp.sharedRecords.map((r) => (
-                <div className="blueprint record-card" key={r.id}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                    <span className={r.type === 'quote' ? 'tag tag-outline' : 'tag tag-accent'}>{r.type === 'quote' ? '인용구' : '인사이트'}</span>
-                    <span style={{ fontSize: 12, opacity: 0.6 }}>{r.nickname} · {r.book_title}</span>
-                  </div>
-                  <p style={{ margin: 0, fontSize: 14, lineHeight: 1.55 }}>{r.text}</p>
-                  <div className="timestamp">{fmtDate(r.created_at)}</div>
+                  ))}
                 </div>
-              ))}
+              ) : (
+                <div className="empty-state small">아직 공유된 기록이 없어요. 개인 책장의 기록 카드에서 이 모임에 공유해보세요.</div>
+              )}
             </div>
-          ) : (
-            <div className="empty-state small">아직 공유된 기록이 없어요. 개인 책장의 기록 카드에서 이 모임에 공유해보세요.</div>
-          )}
-        </div>
 
-        <div>
-          <h4 style={{ marginBottom: 10, fontSize: 15 }}>멤버들의 질문노트</h4>
-          {grp.sharedQuestions.length > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {grp.sharedQuestions.map((q) => (
-                <SharedQuestion key={q.id} q={q} onAnswer={(text) => onAnswerSharedQuestion(q.id, text)} />
-              ))}
-            </div>
-          ) : (
-            <div className="empty-state small">아직 공유된 질문 노트가 없어요.</div>
-          )}
-        </div>
-
-        <div>
-          <h4 style={{ marginBottom: 10, fontSize: 15 }}>멤버들의 실천미션</h4>
-          {grp.sharedMissions.length > 0 ? (
-            <div className="blueprint mission-list">
-              {grp.sharedMissions.map((m) => (
-                <div className="mission-row" key={m.id}>
-                  <span style={{ fontSize: 16, flex: 'none' }}>{m.done ? '✅' : '⬜'}</span>
-                  <span className="mission-text">{m.text}</span>
-                  <span style={{ fontSize: 11, color: 'var(--color-neutral-600)' }}>{m.nickname}</span>
+            <div>
+              <h4 style={{ marginBottom: 10, fontSize: 15 }}>멤버들의 질문노트</h4>
+              {grp.sharedQuestions.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {grp.sharedQuestions.map((q) => (
+                    <SharedQuestion key={q.id} q={q} onAnswer={(text) => onAnswerSharedQuestion(q.id, text)} />
+                  ))}
                 </div>
-              ))}
+              ) : (
+                <div className="empty-state small">아직 공유된 질문 노트가 없어요.</div>
+              )}
             </div>
-          ) : (
-            <div className="empty-state small">아직 공유된 미션이 없어요.</div>
-          )}
-        </div>
+
+            <div>
+              <h4 style={{ marginBottom: 10, fontSize: 15 }}>멤버들의 실천미션</h4>
+              {grp.sharedMissions.length > 0 ? (
+                <div className="blueprint mission-list">
+                  {grp.sharedMissions.map((m) => (
+                    <div className="mission-row" key={m.id}>
+                      <span style={{ fontSize: 16, flex: 'none' }}>{m.done ? '✅' : '⬜'}</span>
+                      <span className="mission-text">{m.text}</span>
+                      <span style={{ fontSize: 11, color: 'var(--color-neutral-600)' }}>{m.nickname}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="empty-state small">아직 공유된 미션이 없어요.</div>
+              )}
+            </div>
+          </>
+        )}
+
+        {tab === 'ranking' && (
+          <div>
+            <h4 style={{ marginBottom: 10, fontSize: 15 }}>모임 랭킹</h4>
+            <GroupRankingList ranking={ranking} loading={rankingLoading} userId={userId} />
+          </div>
+        )}
+
+        {tab === 'settings' && (
+          <>
+            <div>
+              <h4 style={{ marginBottom: 10, fontSize: 15 }}>이번 달 목표</h4>
+              <GroupGoalCard goal={grp.goal} onSetGoal={onSetGoal} />
+            </div>
+
+            <div>
+              <h4 style={{ marginBottom: 10, fontSize: 15 }}>멤버 관리</h4>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                {grp.members.map((mem) => (
+                  <div
+                    key={mem.id}
+                    style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid var(--color-divider)' }}
+                  >
+                    <span style={{ fontSize: 14 }}>
+                      {mem.nickname}
+                      {mem.id === grp.owner_id && <span className="tag tag-accent" style={{ marginLeft: 6 }}>모임장</span>}
+                    </span>
+                    {isOwner && mem.id !== userId && (
+                      <button type="button" className="btn btn-secondary" style={{ fontSize: 12 }} onClick={() => handleKick(mem.id, mem.nickname)}>
+                        강퇴
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       {showEditGroup && (
@@ -430,21 +468,18 @@ function GroupDetailView({
   );
 }
 
-function GroupGoalCard({ goal, monthTotal, onSetGoal }) {
+function GroupGoalCard({ goal, onSetGoal, editable = true }) {
   const [editing, setEditing] = useState(false);
-  const [target, setTarget] = useState(goal?.target_books ? String(goal.target_books) : '');
+  const [text, setText] = useState(goal?.goal_text || '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
-  const pct = goal ? Math.min(100, Math.round((monthTotal / goal.target_books) * 100)) : 0;
-
   const save = async () => {
-    const n = parseInt(target, 10);
-    if (!n || n <= 0) { setError('1 이상의 숫자를 입력해주세요.'); return; }
+    if (!text.trim()) { setError('목표를 입력해주세요.'); return; }
     setBusy(true);
     setError('');
     try {
-      await onSetGoal(n);
+      await onSetGoal(text.trim());
       setEditing(false);
     } catch (err) {
       setError(err.message || '저장에 실패했어요.');
@@ -453,36 +488,41 @@ function GroupGoalCard({ goal, monthTotal, onSetGoal }) {
     }
   };
 
-  return (
-    <div className="blueprint" style={{ padding: 14 }}>
-      {goal ? (
-        <>
-          <div style={{ fontSize: 13, marginBottom: 8 }}>
-            이번 달 목표 <b>{goal.target_books}권</b> 중 <b>{monthTotal}권</b> 달성
-          </div>
-          <div className="progress-row">
-            <div className="progress-track"><span className="progress-fill" style={{ width: `${pct}%` }} /></div>
-            <span className="progress-label">{pct}%</span>
-          </div>
-        </>
-      ) : (
-        <div className="empty-state small" style={{ padding: '4px 0' }}>아직 이번 달 목표가 없어요.</div>
-      )}
-      {editing ? (
+  if (editing) {
+    return (
+      <div className="blueprint" style={{ padding: 14 }}>
+        <input
+          className="input" value={text} onChange={(e) => setText(e.target.value)}
+          placeholder="예: 매일 10분씩 책 읽기"
+        />
         <div style={{ display: 'flex', gap: 8, marginTop: 10, alignItems: 'center' }}>
-          <input
-            className="input" type="number" min="1" style={{ maxWidth: 100 }}
-            value={target} onChange={(e) => setTarget(e.target.value)} placeholder="권수"
-          />
           <button type="button" className="btn btn-secondary" style={{ fontSize: 12 }} onClick={save} disabled={busy}>
             {busy ? '저장 중...' : '저장'}
           </button>
-          <button type="button" className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => { setEditing(false); setError(''); }}>취소</button>
+          <button
+            type="button" className="btn btn-ghost" style={{ fontSize: 12 }}
+            onClick={() => { setEditing(false); setError(''); setText(goal?.goal_text || ''); }}
+          >
+            취소
+          </button>
           {error && <span className="error-text">{error}</span>}
         </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="blueprint" style={{ padding: 14 }}>
+      {goal?.goal_text ? (
+        <div style={{ fontSize: 14 }}>{goal.goal_text}</div>
       ) : (
+        <div className="empty-state small" style={{ padding: '4px 0' }}>
+          {editable ? '아직 이번 달 목표가 없어요.' : '아직 설정된 목표가 없어요. 모임 설정에서 추가해보세요.'}
+        </div>
+      )}
+      {editable && (
         <button type="button" className="link-btn" style={{ fontSize: 12, marginTop: 8 }} onClick={() => setEditing(true)}>
-          {goal ? '목표 수정' : '목표 설정하기'}
+          {goal?.goal_text ? '목표 수정' : '목표 설정하기'}
         </button>
       )}
     </div>
