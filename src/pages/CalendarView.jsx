@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { badgeImage, tierForCount } from '../lib/badges.js';
+import { computeEffectivePageLogs } from '../lib/pageLogs.js';
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 const DOT_COLORS = [
@@ -7,7 +8,7 @@ const DOT_COLORS = [
   'var(--color-accent-500)', 'var(--color-accent-2-800)', 'var(--color-neutral-500)',
 ];
 
-export default function CalendarView({ records, books, onOpenBook }) {
+export default function CalendarView({ records, books, pageLogs, onOpenBook }) {
   const [viewDate, setViewDate] = useState(() => {
     const d = new Date();
     d.setDate(1);
@@ -49,13 +50,30 @@ export default function CalendarView({ records, books, onOpenBook }) {
     [books, year, month]
   );
 
+  const effectivePageLogs = useMemo(() => computeEffectivePageLogs(books, pageLogs), [books, pageLogs]);
+
+  const pageLogsThisMonth = useMemo(
+    () => effectivePageLogs.filter((l) => {
+      const d = new Date(l.created_at);
+      return d.getFullYear() === year && d.getMonth() === month;
+    }),
+    [effectivePageLogs, year, month]
+  );
+
+  const pagesByBook = useMemo(() => {
+    const map = {};
+    pageLogsThisMonth.forEach((l) => { map[l.book_id] = (map[l.book_id] || 0) + l.pages_delta; });
+    return map;
+  }, [pageLogsThisMonth]);
+
   const bookIdsInMonth = useMemo(() => {
     const ids = [];
     monthRecords.forEach((r) => { if (!ids.includes(r.book_id)) ids.push(r.book_id); });
     finishedThisMonth.forEach((b) => { if (!ids.includes(b.id)) ids.push(b.id); });
     startedThisMonth.forEach((b) => { if (!ids.includes(b.id)) ids.push(b.id); });
+    pageLogsThisMonth.forEach((l) => { if (!ids.includes(l.book_id)) ids.push(l.book_id); });
     return ids;
-  }, [monthRecords, finishedThisMonth, startedThisMonth]);
+  }, [monthRecords, finishedThisMonth, startedThisMonth, pageLogsThisMonth]);
 
   const colorForBook = (bookId) => DOT_COLORS[bookIdsInMonth.indexOf(bookId) % DOT_COLORS.length];
 
@@ -96,7 +114,8 @@ export default function CalendarView({ records, books, onOpenBook }) {
     const count = monthRecords.filter((r) => r.book_id === id).length;
     const finished = finishedThisMonth.some((b) => b.id === id);
     const started = startedThisMonth.some((b) => b.id === id);
-    return { id, title: titleById[id] || book?.title || '(삭제된 책)', count, finished, started, color: colorForBook(id) };
+    const pages = pagesByBook[id] || 0;
+    return { id, title: titleById[id] || book?.title || '(삭제된 책)', count, finished, started, pages, color: colorForBook(id) };
   });
 
   return (
@@ -167,6 +186,7 @@ export default function CalendarView({ records, books, onOpenBook }) {
               {b.started && <span className="tag tag-accent">시작</span>}
               {b.finished && <span className="tag tag-neutral">완독</span>}
               <span style={{ fontSize: 12, opacity: 0.55 }}>기록 {b.count}건</span>
+              {b.pages > 0 && <span style={{ fontSize: 12, opacity: 0.55 }}>{b.pages}페이지</span>}
             </div>
           ))}
         </div>

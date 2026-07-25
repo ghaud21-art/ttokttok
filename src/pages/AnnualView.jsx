@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { badgeImage } from '../lib/badges.js';
+import { computeEffectivePageLogs } from '../lib/pageLogs.js';
 
 const MONTH_LABELS = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
 const RANK_TIER = [
@@ -11,15 +12,7 @@ const RANK_TIER = [
 export default function AnnualView({ records, books, pageLogs }) {
   const [year, setYear] = useState(() => new Date().getFullYear());
 
-  // page_logs 기능이 생기기 전에 이미 완독한 책은 로그가 없으므로, 완독일이 있는데
-  // 해당 책의 로그가 하나도 없다면 전체 페이지를 완독한 달에 한 번에 반영해준다.
-  const effectivePageLogs = useMemo(() => {
-    const loggedBookIds = new Set((pageLogs || []).map((l) => l.book_id));
-    const backfill = (books || [])
-      .filter((b) => b.status === 'done' && b.finished_at && b.total_pages > 0 && !loggedBookIds.has(b.id))
-      .map((b) => ({ book_id: b.id, pages_delta: b.total_pages, created_at: b.finished_at }));
-    return [...(pageLogs || []), ...backfill];
-  }, [books, pageLogs]);
+  const effectivePageLogs = useMemo(() => computeEffectivePageLogs(books, pageLogs), [books, pageLogs]);
 
   const monthStats = useMemo(() => {
     const recordCounts = Array(12).fill(0);

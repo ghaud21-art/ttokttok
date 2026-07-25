@@ -28,7 +28,7 @@ export default function RecordsPage({ records, books, pageLogs, onOpenBook, acti
       </div>
 
       {view === 'annual' && <AnnualView records={records} books={books} pageLogs={pageLogs} />}
-      {view === 'calendar' && <CalendarView records={records} books={books} onOpenBook={onOpenBook} />}
+      {view === 'calendar' && <CalendarView records={records} books={books} pageLogs={pageLogs} onOpenBook={onOpenBook} />}
       {view === 'tags' && (
         <TagsPage
           records={records} books={books} onOpenBook={onOpenBook}
