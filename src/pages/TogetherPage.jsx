@@ -2,9 +2,7 @@ import { useMemo, useState } from 'react';
 import { useGroups } from '../hooks/useGroups.js';
 import { useGroupRanking } from '../hooks/useGroupRanking.js';
 import { fmtDate, pctOf, STATUS_LABELS, STATUS_TAG_CLASS } from '../lib/format.js';
-import { badgeImage, RANK_TIER } from '../lib/badges.js';
-
-const RANKING_SORT = [
+const STATUS_PERIODS = [
   { key: 'books_month', label: '이번 달' },
   { key: 'books_year', label: '올해' },
   { key: 'books_total', label: '전체' },
@@ -271,7 +269,7 @@ function GroupDetailView({
         <div className="seg" style={{ marginTop: 16 }}>
           <label className="seg-opt"><input type="radio" name="groupTab" checked={tab === 'main'} onChange={() => setTab('main')} />메인</label>
           <label className="seg-opt"><input type="radio" name="groupTab" checked={tab === 'share'} onChange={() => setTab('share')} />함께 나누기</label>
-          <label className="seg-opt"><input type="radio" name="groupTab" checked={tab === 'ranking'} onChange={() => setTab('ranking')} />랭킹</label>
+          <label className="seg-opt"><input type="radio" name="groupTab" checked={tab === 'ranking'} onChange={() => setTab('ranking')} />독서 현황</label>
           <label className="seg-opt"><input type="radio" name="groupTab" checked={tab === 'settings'} onChange={() => setTab('settings')} />모임 설정</label>
         </div>
 
@@ -420,8 +418,8 @@ function GroupDetailView({
 
         {tab === 'ranking' && (
           <div>
-            <h4 style={{ marginBottom: 10, fontSize: 15 }}>모임 랭킹</h4>
-            <GroupRankingList ranking={ranking} loading={rankingLoading} userId={userId} />
+            <h4 style={{ marginBottom: 10, fontSize: 15 }}>독서 현황</h4>
+            <GroupStatusList status={ranking} loading={rankingLoading} userId={userId} />
           </div>
         )}
 
@@ -529,16 +527,16 @@ function GroupGoalCard({ goal, onSetGoal, editable = true }) {
   );
 }
 
-function GroupRankingList({ ranking, loading, userId }) {
-  const [sortKey, setSortKey] = useState('books_month');
-  const sorted = ranking.slice().sort((a, b) => (b[sortKey] || 0) - (a[sortKey] || 0));
+function GroupStatusList({ status, loading, userId }) {
+  const [periodKey, setPeriodKey] = useState('books_month');
+  const sorted = status.slice().sort((a, b) => (a.nickname || '').localeCompare(b.nickname || '', 'ko'));
 
   return (
     <div>
       <div className="seg" style={{ marginBottom: 12 }}>
-        {RANKING_SORT.map((opt) => (
+        {STATUS_PERIODS.map((opt) => (
           <label className="seg-opt" key={opt.key}>
-            <input type="radio" name="rankingSort" checked={sortKey === opt.key} onChange={() => setSortKey(opt.key)} />
+            <input type="radio" name="statusPeriod" checked={periodKey === opt.key} onChange={() => setPeriodKey(opt.key)} />
             {opt.label}
           </label>
         ))}
@@ -549,23 +547,15 @@ function GroupRankingList({ ranking, loading, userId }) {
         <div className="empty-state small">멤버가 없어요.</div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {sorted.map((r, i) => {
-            const medal = RANK_TIER[i];
-            return (
-              <div key={r.user_id} className="blueprint" style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ width: 26, flex: 'none', textAlign: 'center' }}>
-                  {medal
-                    ? <img src={badgeImage(medal.tier)} alt={medal.tierLabel} style={{ width: 24, height: 24, objectFit: 'contain' }} />
-                    : <span style={{ fontSize: 12, opacity: 0.5 }}>{i + 1}</span>}
-                </div>
-                <div style={{ flex: 1, fontSize: 14, fontWeight: r.user_id === userId ? 600 : 400 }}>
-                  {r.nickname}
-                  {r.user_id === userId && <span style={{ fontSize: 11, opacity: 0.55 }}> (나)</span>}
-                </div>
-                <div style={{ fontSize: 13, opacity: 0.7 }}>{r[sortKey] || 0}권</div>
+          {sorted.map((r) => (
+            <div key={r.user_id} className="blueprint" style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ flex: 1, fontSize: 14, fontWeight: r.user_id === userId ? 600 : 400 }}>
+                {r.nickname}
+                {r.user_id === userId && <span style={{ fontSize: 11, opacity: 0.55 }}> (나)</span>}
               </div>
-            );
-          })}
+              <div style={{ fontSize: 13, opacity: 0.7 }}>{r[periodKey] || 0}권</div>
+            </div>
+          ))}
         </div>
       )}
     </div>
