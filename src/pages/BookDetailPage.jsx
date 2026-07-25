@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { STATUS_LABELS, STATUS_TAG_CLASS, pctOf, fmtDate } from '../lib/format.js';
+import { STATUS_LABELS, STATUS_TAG_CLASS, pctOf, fmtDate, matchesSearch } from '../lib/format.js';
 import { parseTags } from '../lib/format.js';
 import { generateQuestions, generateMissions } from '../lib/gemini.js';
 import { useMyGroups } from '../hooks/useMyGroups.js';
@@ -11,6 +11,14 @@ import AddBookDialog from '../components/AddBookDialog.jsx';
 import ShareControl from '../components/ShareControl.jsx';
 import StarRating from '../components/StarRating.jsx';
 import { FREE_USES, KAKAO_LINK } from '../lib/constants.js';
+
+const RECORDS_PAGE_SIZE = 9;
+
+const RECORD_FILTERS = [
+  { key: 'all', label: '전체' },
+  { key: 'quote', label: '인용구' },
+  { key: 'insight', label: '인사이트' },
+];
 
 const SPARKLE = (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -49,6 +57,9 @@ export default function BookDetailPage({
   const lastGenMissionIds = useRef([]);
   const { groups: myGroups } = useMyGroups(userId);
   const [localPage, setLocalPage] = useState(book.current_page);
+  const [recordFilter, setRecordFilter] = useState('all');
+  const [recordSearch, setRecordSearch] = useState('');
+  const [recordVisibleCount, setRecordVisibleCount] = useState(RECORDS_PAGE_SIZE);
 
   useEffect(() => { setUsesCount(profile?.ai_uses_count || 0); }, [profile?.ai_uses_count]);
   const isAdmin = !!profile?.is_admin;
@@ -60,9 +71,14 @@ export default function BookDetailPage({
   // 커밋하면 페이지 이동량이 중복 집계된다(연간기록 페이지 수 부풀림의 원인이었음).
   // 드래그 중에는 화면 표시만 갱신하고, 손을 뗐을 때 한 번만 실제로 커밋한다.
   useEffect(() => { setLocalPage(book.current_page); }, [book.current_page]);
+  useEffect(() => { setRecordVisibleCount(RECORDS_PAGE_SIZE); }, [recordFilter, recordSearch]);
   const commitProgress = (value) => { onSetProgress(book, value); };
 
   const bookRecords = records.filter((r) => r.book_id === book.id).slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  const filteredRecords = bookRecords
+    .filter((r) => recordFilter === 'all' || r.type === recordFilter)
+    .filter((r) => matchesSearch(r.text, recordSearch) || (r.tags || []).some((t) => matchesSearch(t, recordSearch)));
+  const visibleRecords = filteredRecords.slice(0, recordVisibleCount);
   const bookQuestions = questions.filter((q) => q.book_id === book.id).slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   const bookMissions = missions.filter((m) => m.book_id === book.id);
   const pct = pctOf(book);
@@ -189,18 +205,52 @@ export default function BookDetailPage({
       </div>
 
       <div className="section">
-        <h3 style={{ marginBottom: 14 }}>인사이트 갤러리</h3>
-        {bookRecords.length > 0 ? (
-          <div className="record-grid">
-            {bookRecords.map((r) => (
-              <RecordCard
-                key={r.id} record={r} onDelete={onDeleteRecord} onTagClick={onOpenTag}
-                groups={myGroups} onShare={onShareRecord} author={book.author}
-              />
-            ))}
-          </div>
-        ) : (
+        <div className="section-head">
+          <h3 style={{ margin: 0 }}>인사이트 갤러리</h3>
+          {bookRecords.length > 0 && (
+            <div className="seg">
+              {RECORD_FILTERS.map((opt) => (
+                <label className="seg-opt" key={opt.key} style={{ whiteSpace: 'nowrap' }}>
+                  <input type="radio" name="recordFilter" checked={recordFilter === opt.key} onChange={() => setRecordFilter(opt.key)} />
+                  {opt.label}
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+        {bookRecords.length > 0 && (
+          <input
+            className="input" style={{ maxWidth: 280, marginBottom: 16 }}
+            placeholder="이 책의 기록 검색"
+            value={recordSearch}
+            onChange={(e) => setRecordSearch(e.target.value)}
+          />
+        )}
+        {bookRecords.length === 0 ? (
           <div className="empty-state small">아직 기록이 없어요. 위에서 첫 인용구나 인사이트를 남겨보세요.</div>
+        ) : filteredRecords.length === 0 ? (
+          <div className="empty-state small">조건에 맞는 기록이 없어요.</div>
+        ) : (
+          <>
+            <div className="record-grid">
+              {visibleRecords.map((r) => (
+                <RecordCard
+                  key={r.id} record={r} onDelete={onDeleteRecord} onTagClick={onOpenTag}
+                  groups={myGroups} onShare={onShareRecord} author={book.author}
+                />
+              ))}
+            </div>
+            {filteredRecords.length > recordVisibleCount && (
+              <div style={{ textAlign: 'center', marginTop: 16 }}>
+                <button
+                  type="button" className="btn btn-secondary"
+                  onClick={() => setRecordVisibleCount((c) => c + RECORDS_PAGE_SIZE)}
+                >
+                  더보기 ({filteredRecords.length - recordVisibleCount}개 더)
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
 
