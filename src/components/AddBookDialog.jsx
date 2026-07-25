@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { uploadCoverImage } from '../lib/storage.js';
+import { searchBooks } from '../lib/bookSearch.js';
 import StarRating from './StarRating.jsx';
 
 const STATUS_OPTIONS = [
@@ -25,6 +26,33 @@ export default function AddBookDialog({ userId, book, onClose, onSubmit }) {
   const [coverUrl, setCoverUrl] = useState(book?.cover_url || '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchBusy, setSearchBusy] = useState(false);
+  const [searchError, setSearchError] = useState('');
+
+  const runSearch = async () => {
+    if (!searchQuery.trim()) return;
+    setSearchBusy(true);
+    setSearchError('');
+    try {
+      const results = await searchBooks(searchQuery.trim());
+      setSearchResults(results);
+      if (results.length === 0) setSearchError('검색 결과가 없어요.');
+    } catch (err) {
+      setSearchError(err.message || '검색에 실패했어요.');
+    } finally {
+      setSearchBusy(false);
+    }
+  };
+
+  const pickResult = (book) => {
+    setTitle(book.title);
+    setAuthor(book.author);
+    if (book.thumbnail) { setCoverUrl(book.thumbnail); setCoverFile(null); setCoverPreview(''); }
+    setSearchResults([]);
+  };
 
   const handleFile = (e) => {
     const file = e.target.files && e.target.files[0];
@@ -60,6 +88,46 @@ export default function AddBookDialog({ userId, book, onClose, onSubmit }) {
     <div className="dialog-backdrop" onClick={onClose}>
       <form className="dialog" onSubmit={submit} onClick={(e) => e.stopPropagation()}>
         <div className="dialog-title">{isEdit ? '책 정보 수정' : '책 등록'}</div>
+
+        {!isEdit && (
+          <div className="field">
+            <label>책 검색으로 채우기</label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input
+                className="input" style={{ flex: 1 }}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="책 제목으로 검색"
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); runSearch(); } }}
+              />
+              <button type="button" className="btn btn-secondary" onClick={runSearch} disabled={searchBusy || !searchQuery.trim()}>
+                {searchBusy ? '검색 중...' : '검색'}
+              </button>
+            </div>
+            {searchError && <div className="error-text" style={{ marginTop: 6 }}>{searchError}</div>}
+            {searchResults.length > 0 && (
+              <div style={{
+                display: 'flex', flexDirection: 'column', gap: 4, marginTop: 8, maxHeight: 220, overflowY: 'auto',
+                border: '1px solid var(--color-divider)', borderRadius: 'var(--radius-md)', padding: 6,
+              }}>
+                {searchResults.map((b, i) => (
+                  <div key={i} className="search-result-row" onClick={() => pickResult(b)}>
+                    <div style={{ width: 32, height: 42, flex: 'none', background: 'var(--color-surface)', borderRadius: 4, overflow: 'hidden' }}>
+                      {b.thumbnail && <img src={b.thumbnail} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.title}</div>
+                      <div style={{ fontSize: 11, opacity: 0.6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {b.author}{b.publisher ? ` · ${b.publisher}` : ''}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="field">
           <label>제목</label>
           <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="책 제목" />

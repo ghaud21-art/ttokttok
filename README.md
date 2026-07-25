@@ -68,11 +68,12 @@ git push -u origin main
 ## 5. Vercel에 배포하기
 
 1. [vercel.com](https://vercel.com) 로그인 → **Add New → Project** → 방금 push한 GitHub 저장소 선택 → Import
-2. **Environment Variables** 에 아래 4개를 추가 (Production / Preview / Development 모두 체크):
+2. **Environment Variables** 에 아래 5개를 추가 (Production / Preview / Development 모두 체크):
    - `VITE_SUPABASE_URL`
    - `VITE_SUPABASE_ANON_KEY`
    - `GEMINI_API_KEY`
    - `SUPABASE_SERVICE_ROLE_KEY` (Supabase Project Settings → API → `service_role` — 관리자 기능용, 아래 6번 참고)
+   - `KAKAO_REST_API_KEY` (책 검색 자동완성용, 아래 8번 참고)
 3. **Deploy** 클릭. 프레임워크는 Vite로 자동 인식되고, `api/generate.js`는 자동으로 서버리스 함수로 배포됩니다.
 4. 배포 완료 후 나오는 `https://<프로젝트>.vercel.app` 주소를 친구들에게 공유하면 각자 회원가입해서 쓸 수 있어요.
 
@@ -103,6 +104,14 @@ git push -u origin main
 - 상단 **마이페이지** 탭에서 닉네임과 프로필 사진을 바꿀 수 있고, AI 무료 사용 현황도 확인할 수 있어요.
 - **기록 불러오기**: "북적북적" 앱에서 내보낸 CSV 파일을 그대로 불러올 수 있어요. 장르·페이지 수·표지·출판사는 이 앱이 그 개념을 갖고 있지 않아 옮겨지지 않고, 이미 등록된 책(제목+저자가 같음)은 건너뜁니다. "양식 다운로드"로 정확한 컬럼 구성을 미리 확인할 수 있어요.
 - **기록 내보내기**: 등록된 책 전체를 같은 CSV 양식으로 내려받을 수 있어요.
+
+## 9. 책 검색 자동완성 설정
+
+책 등록 화면에서 제목으로 검색하면 저자·표지가 자동으로 채워지는 기능은 카카오 도서검색 API를 씁니다.
+
+1. [카카오 개발자 사이트](https://developers.kakao.com)에 로그인 → **내 애플리케이션 → 애플리케이션 추가하기**로 앱을 하나 만드세요 (별도 승인 절차 없이 바로 만들어져요).
+2. 앱 요약 정보에 있는 **REST API 키**를 복사해서 `.env.local`의 `KAKAO_REST_API_KEY`(로컬)와 Vercel 환경변수(배포, 위 5번 참고)에 넣으세요. **절대 `VITE_` 접두사를 붙이지 마세요.**
+3. 키가 없어도 앱은 정상 동작하고, 책 등록 시 검색 결과만 나오지 않아요(에러 문구 표시). 나머지 필드는 지금처럼 직접 입력하면 돼요.
 
 ---
 

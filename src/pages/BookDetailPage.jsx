@@ -195,7 +195,7 @@ export default function BookDetailPage({
             {bookRecords.map((r) => (
               <RecordCard
                 key={r.id} record={r} onDelete={onDeleteRecord} onTagClick={onOpenTag}
-                groups={myGroups} onShare={onShareRecord}
+                groups={myGroups} onShare={onShareRecord} author={book.author}
               />
             ))}
           </div>

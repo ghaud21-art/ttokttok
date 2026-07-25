@@ -11,9 +11,15 @@ export default function TagsPage({ records, books, onOpenBook, activeTag, onSele
     return map;
   }, [books]);
 
+  const authorById = useMemo(() => {
+    const map = {};
+    books.forEach((b) => { map[b.id] = b.author; });
+    return map;
+  }, [books]);
+
   const recordsWithBook = useMemo(
-    () => records.map((r) => ({ ...r, bookTitle: titleById[r.book_id] || '' })),
-    [records, titleById]
+    () => records.map((r) => ({ ...r, bookTitle: titleById[r.book_id] || '', bookAuthor: authorById[r.book_id] || '' })),
+    [records, titleById, authorById]
   );
 
   const tagCounts = useMemo(() => {
@@ -63,7 +69,7 @@ export default function TagsPage({ records, books, onOpenBook, activeTag, onSele
           {searchResults.length > 0 ? (
             <div className="record-grid">
               {searchResults.map((rec) => (
-                <RecordCard key={rec.id} record={rec} showBookLink onOpenBook={onOpenBook} />
+                <RecordCard key={rec.id} record={rec} showBookLink onOpenBook={onOpenBook} author={rec.bookAuthor} />
               ))}
             </div>
           ) : (
@@ -93,7 +99,7 @@ export default function TagsPage({ records, books, onOpenBook, activeTag, onSele
               <div style={{ marginBottom: 14, fontSize: 14, opacity: 0.7 }}>#{activeTag} 태그의 기록 {tagRecords.length}건</div>
               <div className="record-grid">
                 {tagRecords.map((rec) => (
-                  <RecordCard key={rec.id} record={rec} showBookLink onOpenBook={onOpenBook} />
+                  <RecordCard key={rec.id} record={rec} showBookLink onOpenBook={onOpenBook} author={rec.bookAuthor} />
                 ))}
               </div>
             </>

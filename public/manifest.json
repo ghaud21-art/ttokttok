@@ -1,0 +1,14 @@
+{
+  "name": "똑똑 — 우리 사이 똑똑",
+  "short_name": "똑똑",
+  "description": "책을 읽으며 얻은 인용구·인사이트를 기록하고, AI가 성찰 질문과 실천 미션을 만들어주는 독서 기록 앱",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#4fa79e",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

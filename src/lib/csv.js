@@ -1,6 +1,7 @@
 // 북적북적 CSV 양식(인덱스,제목,저자,출판사,독서상태,생성일,시작일,읽은 날짜,중단일)과의
 // 불러오기/내보내기를 위한 순수 함수 모음. Supabase나 React에 의존하지 않는다.
 import { STATUS_LABELS } from './format.js';
+import { downloadBlob } from './download.js';
 
 const CSV_HEADER = ['인덱스', '제목', '저자', '출판사', '독서상태', '생성일', '시작일', '읽은 날짜', '중단일'];
 
@@ -113,13 +114,5 @@ export function templateCSV() {
 
 export function downloadCSV(filename, text) {
   const BOM = String.fromCharCode(0xFEFF);
-  const blob = new Blob([BOM + text], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  downloadBlob(filename, new Blob([BOM + text], { type: 'text/csv;charset=utf-8;' }));
 }
