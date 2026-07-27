@@ -147,7 +147,7 @@ create index if not exists ddok_page_logs_created_idx on public.ddok_page_logs(c
 create index if not exists ddok_books_owner_idx on public.ddok_books(owner_id);
 
 -- ----------------------------------------------------------------------------
--- ddok_records : 인용구 / 인사이트
+-- ddok_records : 인용구 / 영감 (내부 type 값은 하위호환을 위해 'insight' 그대로 사용)
 -- ----------------------------------------------------------------------------
 create table if not exists public.ddok_records (
   id uuid primary key default gen_random_uuid(),

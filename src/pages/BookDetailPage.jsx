@@ -17,7 +17,7 @@ const RECORDS_PAGE_SIZE = 9;
 const RECORD_FILTERS = [
   { key: 'all', label: '전체' },
   { key: 'quote', label: '인용구' },
-  { key: 'insight', label: '인사이트' },
+  { key: 'insight', label: '영감' },
 ];
 
 const SPARKLE = (
@@ -206,7 +206,7 @@ export default function BookDetailPage({
 
       <div className="section">
         <div className="section-head">
-          <h3 style={{ margin: 0 }}>인사이트 갤러리</h3>
+          <h3 style={{ margin: 0 }}>영감 갤러리</h3>
           {bookRecords.length > 0 && (
             <div className="seg">
               {RECORD_FILTERS.map((opt) => (
@@ -227,7 +227,7 @@ export default function BookDetailPage({
           />
         )}
         {bookRecords.length === 0 ? (
-          <div className="empty-state small">아직 기록이 없어요. 위에서 첫 인용구나 인사이트를 남겨보세요.</div>
+          <div className="empty-state small">아직 기록이 없어요. 위에서 첫 인용구나 영감을 남겨보세요.</div>
         ) : filteredRecords.length === 0 ? (
           <div className="empty-state small">조건에 맞는 기록이 없어요.</div>
         ) : (

@@ -3,7 +3,7 @@ import { supabase } from '../supabaseClient.js';
 function buildContext(book, records) {
   return records
     .filter((r) => r.book_id === book.id)
-    .map((r) => `[${r.type === 'quote' ? '인용구' : '인사이트'}] ${r.text}`)
+    .map((r) => `[${r.type === 'quote' ? '인용구' : '영감'}] ${r.text}`)
     .join('\n');
 }
 

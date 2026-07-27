@@ -1,4 +1,4 @@
-// 인용구/인사이트 기록을 정사각형 PNG 카드 이미지로 그려주는 순수 canvas 렌더러.
+// 인용구/영감 기록을 정사각형 PNG 카드 이미지로 그려주는 순수 canvas 렌더러.
 const SIZE = 1080;
 const PADDING = 90;
 
@@ -88,7 +88,7 @@ export async function renderQuoteImage({ text, type, bookTitle, author }) {
   ctx.textBaseline = 'top';
   ctx.fillText('“', PADDING - 20, PADDING - 60);
 
-  const pillLabel = type === 'quote' ? '인용구' : '인사이트';
+  const pillLabel = type === 'quote' ? '인용구' : '영감';
   ctx.font = "600 28px 'Barlow'";
   const pillPadX = 26;
   const pillHeight = 52;

@@ -371,7 +371,7 @@ function GroupDetailView({
                   {grp.sharedRecords.map((r) => (
                     <div className="blueprint record-card" key={r.id}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                        <span className={r.type === 'quote' ? 'tag tag-outline' : 'tag tag-accent'}>{r.type === 'quote' ? '인용구' : '인사이트'}</span>
+                        <span className={r.type === 'quote' ? 'tag tag-outline' : 'tag tag-accent'}>{r.type === 'quote' ? '인용구' : '영감'}</span>
                         <span style={{ fontSize: 12, opacity: 0.6 }}>{r.nickname} · {r.book_title}</span>
                       </div>
                       <p style={{ margin: 0, fontSize: 14, lineHeight: 1.55 }}>{r.text}</p>

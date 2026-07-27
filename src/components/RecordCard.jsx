@@ -16,7 +16,7 @@ export default function RecordCard({ record, onDelete, onTagClick, showBookLink,
       const blob = await renderQuoteImage({
         text: record.text, type: record.type, bookTitle: record.book_title || record.bookTitle || '', author,
       });
-      const filename = `ddokddok_${isQuote ? '인용구' : '인사이트'}_${record.id.slice(0, 8)}.png`;
+      const filename = `ddokddok_${isQuote ? '인용구' : '영감'}_${record.id.slice(0, 8)}.png`;
       const file = new File([blob], filename, { type: 'image/png' });
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({ files: [file], title: '똑똑' });
@@ -33,7 +33,7 @@ export default function RecordCard({ record, onDelete, onTagClick, showBookLink,
   return (
     <div className="blueprint record-card">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-        <span className={isQuote ? 'tag tag-outline' : 'tag tag-accent'}>{isQuote ? '인용구' : '인사이트'}</span>
+        <span className={isQuote ? 'tag tag-outline' : 'tag tag-accent'}>{isQuote ? '인용구' : '영감'}</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <button
             type="button" className="btn btn-icon btn-ghost" style={{ width: 22, height: 22 }}

@@ -27,7 +27,7 @@ export default function RecordForm({ onSubmit }) {
         </label>
         <label className="seg-opt">
           <input type="radio" name="recordType" checked={type === 'insight'} onChange={() => setType('insight')} />
-          인사이트
+          영감
         </label>
       </div>
       <textarea
