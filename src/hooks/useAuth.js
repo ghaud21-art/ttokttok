@@ -11,7 +11,8 @@ export function useAuth() {
       setProfile(null);
       return;
     }
-    const { data } = await supabase.from('ddok_profiles').select('id, nickname, is_admin, ai_uses_count, ai_unlimited, avatar_url, must_change_password').eq('id', userId).maybeSingle();
+    const { data, error } = await supabase.from('ddok_profiles').select('id, nickname, is_admin, ai_uses_count, ai_unlimited, avatar_url, must_change_password').eq('id', userId).maybeSingle();
+    if (error) console.error('[useAuth] 프로필을 불러오지 못했어요 (마이그레이션이 밀려있지 않은지 확인하세요):', error.message);
     setProfile(data || null);
   }, []);
 
