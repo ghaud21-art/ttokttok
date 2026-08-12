@@ -41,7 +41,7 @@ export default function AdminPage() {
 
       <h3 style={{ marginBottom: 12, fontSize: 18 }}>가입자 목록 {users.length > 0 && `(${users.length}명)`}</h3>
       {error && <div className="error-text" style={{ marginBottom: 10 }}>{error}</div>}
-      {loading ? (
+      {loading && users.length === 0 ? (
         <div className="empty-state small">불러오는 중...</div>
       ) : users.length === 0 ? (
         <div className="empty-state small">가입자가 없어요.</div>
