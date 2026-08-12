@@ -29,7 +29,13 @@ export default async function handler(req, res) {
     const tempPassword = generateTempPassword();
     const supabaseAdmin = getSupabaseAdmin();
 
-    const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(userId, { password: tempPassword });
+    // email_confirm도 함께 true로 처리 — 이메일 인증을 안 한 사용자는 비밀번호가 맞아도
+    // "Email not confirmed"로 로그인이 막히는데, 관리자가 도와주는 상황에서는 이 확인
+    // 절차가 의미가 없으므로 리셋과 함께 바로 풀어준다.
+    const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+      password: tempPassword,
+      email_confirm: true,
+    });
     if (authError) { res.status(500).json({ error: authError.message }); return; }
 
     const { error: profileError } = await supabaseAdmin
