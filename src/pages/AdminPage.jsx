@@ -4,7 +4,7 @@ import { useAppSettings } from '../hooks/useAppSettings.js';
 import { fmtDate } from '../lib/format.js';
 
 export default function AdminPage() {
-  const { users, loading, error, setBan, deleteUser, setAiUnlimited } = useAdminUsers();
+  const { users, loading, error, setBan, deleteUser, setAiUnlimited, resetPassword } = useAdminUsers();
   const { aiEnabled, loading: settingsLoading, setAiEnabled } = useAppSettings();
   const [toggleBusy, setToggleBusy] = useState(false);
   const [toggleError, setToggleError] = useState('');
@@ -61,7 +61,10 @@ export default function AdminPage() {
             </thead>
             <tbody>
               {users.map((u) => (
-                <UserRow key={u.id} u={u} onSetBan={setBan} onDelete={deleteUser} onSetAiUnlimited={setAiUnlimited} />
+                <UserRow
+                  key={u.id} u={u} onSetBan={setBan} onDelete={deleteUser}
+                  onSetAiUnlimited={setAiUnlimited} onResetPassword={resetPassword}
+                />
               ))}
             </tbody>
           </table>
@@ -71,13 +74,28 @@ export default function AdminPage() {
   );
 }
 
-function UserRow({ u, onSetBan, onDelete, onSetAiUnlimited }) {
+function UserRow({ u, onSetBan, onDelete, onSetAiUnlimited, onResetPassword }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [confirmText, setConfirmText] = useState('');
+  const [tempPassword, setTempPassword] = useState('');
 
   const target = u.nickname || u.email;
+
+  const handleResetPassword = async () => {
+    if (!window.confirm(`${target}님의 비밀번호를 재설정할까요? 기존 비밀번호는 즉시 무효화돼요.`)) return;
+    setBusy(true);
+    setError('');
+    try {
+      const pw = await onResetPassword(u.id);
+      setTempPassword(pw);
+    } catch (err) {
+      setError(err.message || '비밀번호 재설정에 실패했어요.');
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const toggleBan = async () => {
     setBusy(true);
@@ -138,6 +156,9 @@ function UserRow({ u, onSetBan, onDelete, onSetAiUnlimited }) {
         <td>
           {!u.isAdmin && (
             <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+              <button type="button" className="btn btn-secondary" style={{ fontSize: 12 }} onClick={handleResetPassword} disabled={busy}>
+                비밀번호 리셋
+              </button>
               <button type="button" className="btn btn-secondary" style={{ fontSize: 12 }} onClick={toggleUnlimited} disabled={busy}>
                 {u.aiUnlimited ? 'AI 무제한 해제' : 'AI 무제한 부여'}
               </button>
@@ -167,6 +188,30 @@ function UserRow({ u, onSetBan, onDelete, onSetAiUnlimited }) {
               </button>
               <button type="button" className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => { setConfirmingDelete(false); setConfirmText(''); }}>
                 취소
+              </button>
+            </div>
+          </td>
+        </tr>
+      )}
+      {tempPassword && (
+        <tr>
+          <td colSpan={7}>
+            <div className="blueprint" style={{ padding: 12, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 13 }}>
+                임시 비밀번호가 발급됐어요. 창을 닫으면 다시 볼 수 없으니 지금 복사해서 <b>{target}</b>님께 전달해주세요.
+                로그인하면 바로 새 비밀번호 설정 화면이 떠요.
+              </span>
+              <code style={{ background: 'var(--color-surface)', padding: '4px 10px', borderRadius: 8, fontSize: 13, letterSpacing: '0.03em' }}>
+                {tempPassword}
+              </code>
+              <button
+                type="button" className="btn btn-secondary" style={{ fontSize: 12 }}
+                onClick={() => navigator.clipboard.writeText(tempPassword)}
+              >
+                복사
+              </button>
+              <button type="button" className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setTempPassword('')}>
+                닫기
               </button>
             </div>
           </td>

@@ -51,5 +51,11 @@ export function useAdminUsers() {
     await reload();
   }, [reload]);
 
-  return { users, loading, error, reload, setBan, deleteUser, setAiUnlimited };
+  const resetPassword = useCallback(async (userId) => {
+    const data = await authedFetch('/api/admin/reset-password', { method: 'POST', body: JSON.stringify({ userId }) });
+    await reload();
+    return data.tempPassword;
+  }, [reload]);
+
+  return { users, loading, error, reload, setBan, deleteUser, setAiUnlimited, resetPassword };
 }

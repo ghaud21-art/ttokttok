@@ -11,7 +11,7 @@ export function useAuth() {
       setProfile(null);
       return;
     }
-    const { data } = await supabase.from('ddok_profiles').select('id, nickname, is_admin, ai_uses_count, ai_unlimited, avatar_url').eq('id', userId).maybeSingle();
+    const { data } = await supabase.from('ddok_profiles').select('id, nickname, is_admin, ai_uses_count, ai_unlimited, avatar_url, must_change_password').eq('id', userId).maybeSingle();
     setProfile(data || null);
   }, []);
 
@@ -68,6 +68,15 @@ export function useAuth() {
 
   const reloadProfile = useCallback(() => loadProfile(session?.user?.id), [session, loadProfile]);
 
+  const completePasswordReset = useCallback(async (newPassword) => {
+    if (!session?.user?.id) return;
+    const { error: authError } = await supabase.auth.updateUser({ password: newPassword });
+    if (authError) throw authError;
+    const { error } = await supabase.from('ddok_profiles').update({ must_change_password: false }).eq('id', session.user.id);
+    if (error) throw error;
+    await loadProfile(session.user.id);
+  }, [session, loadProfile]);
+
   return {
     session,
     user: session?.user || null,
@@ -79,5 +88,6 @@ export function useAuth() {
     updateNickname,
     updateAvatar,
     reloadProfile,
+    completePasswordReset,
   };
 }

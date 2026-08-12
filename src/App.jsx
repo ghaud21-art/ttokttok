@@ -10,11 +10,15 @@ import MissionsArchivePage from './pages/MissionsArchivePage.jsx';
 import TogetherPage from './pages/TogetherPage.jsx';
 import AdminPage from './pages/AdminPage.jsx';
 import MyPage from './pages/MyPage.jsx';
+import ForcePasswordChangePage from './pages/ForcePasswordChangePage.jsx';
 import NavBar from './components/NavBar.jsx';
 import AddBookDialog from './components/AddBookDialog.jsx';
 
 export default function App() {
-  const { user, profile, loading, signIn, signUp, signOut, updateNickname, updateAvatar, reloadProfile } = useAuth();
+  const {
+    user, profile, loading, signIn, signUp, signOut,
+    updateNickname, updateAvatar, reloadProfile, completePasswordReset,
+  } = useAuth();
 
   if (!isSupabaseConfigured) {
     return (
@@ -36,6 +40,10 @@ export default function App() {
 
   if (!user) {
     return <LoginPage onSignIn={signIn} onSignUp={signUp} />;
+  }
+
+  if (profile?.must_change_password) {
+    return <ForcePasswordChangePage onSubmit={completePasswordReset} onLogout={signOut} />;
   }
 
   return (
